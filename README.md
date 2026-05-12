@@ -2,6 +2,10 @@
 
 Monorepo for **thelnk** — short links on `thelnk.is/:slug` (Cloudflare Worker) and the app on `app.thelnk.is` (Astro + Clerk + D1 + R2).
 
+## Development workflow
+
+**Work only on `main`.** Commit and push changes directly to `main`. Do not use long-lived feature branches for this repository.
+
 ## Packages
 
 | Directory | What it does |
