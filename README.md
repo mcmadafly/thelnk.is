@@ -6,8 +6,8 @@ Monorepo for **thelnk** — short links on `thelnk.is/:slug` (Cloudflare Worker)
 
 | Directory | What it does |
 |-----------|----------------|
-| `apps/worker` | Resolves `/:slug` in D1: URL → `302` to target; file → `302` to `app.thelnk.is/f/:slug`. |
-| `apps/web` | Astro (Bun) app: shorten URLs, presigned R2 uploads, branded download page, Clerk auth. |
+| `apps/worker` | Resolves `/:slug` in D1: **URL** → counts a use, then `302` to target (or **403** at cap); **file** → `302` to the app download page (uses are counted per download in the app). |
+| `apps/web` | Astro (Bun) app: shorten URLs, presigned R2 uploads, branded download page, Clerk auth, **per-link use limits** (default 10). |
 
 ## Prerequisites
 
@@ -59,6 +59,21 @@ See `apps/web/.dev.vars.example`. Production: set `CLERK_SECRET_KEY`, `R2_ACCESS
 
 ```bash
 bun install   # if using root package.json workspaces
+```
+
+## Analytics and use limits
+
+- Each **URL** short link stores `use_count` / `max_uses` in D1. A successful hit on `thelnk.is/:slug` increments `use_count` on the **redirect Worker** before redirecting. Default **`max_uses` = 10** for anonymous and free signed-in creators.
+- Each **file** short link counts a use on **each completed download** (`GET /api/download/:slug`), not when opening the branded landing page. Premium creators get **`max_uses = -1`** (unlimited) on links created while they are premium.
+- **`users`** table: `clerk_user_id`, `plan` (`free` \| `premium`). New links read the creator’s plan at insert time and store `max_uses` on the row.
+
+### Upgrading a user (manual until billing is wired)
+
+After you set a Clerk user to premium in your own process, mark them in D1 and optionally lift existing links:
+
+```sql
+UPDATE users SET plan = 'premium', updated_at = unixepoch('now') WHERE clerk_user_id = 'user_xxx';
+UPDATE links SET max_uses = -1 WHERE clerk_user_id = 'user_xxx';
 ```
 
 ## License
