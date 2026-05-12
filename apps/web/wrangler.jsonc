@@ -1,0 +1,33 @@
+{
+	"compatibility_date": "2026-05-12",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"name": "apps-web",
+	"main": "@astrojs/cloudflare/entrypoints/server",
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "thelnk",
+			"database_id": "00000000-0000-0000-0000-000000000001",
+			"migrations_dir": "migrations"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "FILES",
+			"bucket_name": "thelnk-files"
+		}
+	],
+	"vars": {
+		"R2_ACCOUNT_ID": "",
+		"R2_BUCKET_NAME": "thelnk-files",
+		"PUBLIC_APP_ORIGIN": "https://app.thelnk.is",
+		"PUBLIC_SHORT_ORIGIN": "https://thelnk.is"
+	}
+}

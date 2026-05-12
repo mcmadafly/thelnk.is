@@ -1,0 +1,156 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/components';
+---
+
+<BaseLayout title="thelnk · Short links & files">
+  <div slot="auth" class="auth-slot">
+    <Show when="signed-in">
+      <UserButton />
+    </Show>
+    <Show when="signed-out">
+      <span class="row">
+        <SignInButton mode="modal" />
+        <SignUpButton mode="modal" />
+      </span>
+    </Show>
+  </div>
+
+  <section class="panel">
+    <h2>Shorten a URL</h2>
+    <p class="hint">Paste a link. Logged-out visitors can still create links; limits will land later.</p>
+    <form id="form-url" class="stack">
+      <div>
+        <label for="targetUrl">Destination</label>
+        <input id="targetUrl" name="targetUrl" type="url" placeholder="https://example.com/article" required />
+      </div>
+      <div class="row">
+        <button type="submit" id="btn-url">Create short link</button>
+      </div>
+    </form>
+    <div id="out-url" class="msg" hidden></div>
+  </section>
+
+  <section class="panel">
+    <h2>Upload a file</h2>
+    <p class="hint">Files go to R2 with a presigned PUT, then we store metadata in D1.</p>
+    <div class="stack">
+      <div>
+        <label for="file">Choose file</label>
+        <input id="file" name="file" type="file" />
+      </div>
+      <div class="row">
+        <button type="button" id="btn-file" disabled>Upload &amp; create link</button>
+      </div>
+    </div>
+    <div id="out-file" class="msg" hidden></div>
+  </section>
+</BaseLayout>
+
+<script>
+  const formUrl = document.getElementById('form-url') as HTMLFormElement;
+  const outUrl = document.getElementById('out-url') as HTMLDivElement;
+  const btnFile = document.getElementById('btn-file') as HTMLButtonElement;
+  const fileInput = document.getElementById('file') as HTMLInputElement;
+  const outFile = document.getElementById('out-file') as HTMLDivElement;
+
+  function show(el: HTMLDivElement, text: string, isErr: boolean) {
+    el.hidden = false;
+    el.textContent = text;
+    el.classList.toggle('err', isErr);
+  }
+
+  formUrl?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    outUrl.hidden = true;
+    const fd = new FormData(formUrl);
+    const targetUrl = String(fd.get('targetUrl') ?? '');
+    const res = await fetch('/api/links/url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUrl }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { shortUrl?: string; error?: string };
+    if (!res.ok) {
+      show(outUrl, data.error ?? res.statusText, true);
+      return;
+    }
+    show(outUrl, data.shortUrl ?? 'Created', false);
+  });
+
+  fileInput?.addEventListener('change', () => {
+    btnFile.disabled = !fileInput.files?.length;
+  });
+
+  btnFile?.addEventListener('click', async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    outFile.hidden = true;
+    btnFile.disabled = true;
+    try {
+      const initRes = await fetch('/api/uploads/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type || 'application/octet-stream',
+          size: file.size,
+        }),
+      });
+      const init = (await initRes.json().catch(() => ({}))) as {
+        uploadUrl?: string;
+        r2Key?: string;
+        contentType?: string;
+        size?: number;
+        filename?: string;
+        error?: string;
+      };
+      if (!initRes.ok) {
+        show(outFile, init.error ?? initRes.statusText, true);
+        return;
+      }
+      const putRes = await fetch(init.uploadUrl!, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': (init.contentType ?? file.type) || 'application/octet-stream',
+        },
+        body: file,
+      });
+      if (!putRes.ok) {
+        show(outFile, `Upload to storage failed (${putRes.status})`, true);
+        return;
+      }
+      const doneRes = await fetch('/api/uploads/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          r2Key: init.r2Key,
+          filename: init.filename ?? file.name,
+          contentType: (init.contentType ?? file.type) || 'application/octet-stream',
+          size: init.size ?? file.size,
+        }),
+      });
+      const done = (await doneRes.json().catch(() => ({}))) as { shortUrl?: string; error?: string };
+      if (!doneRes.ok) {
+        show(outFile, done.error ?? doneRes.statusText, true);
+        return;
+      }
+      show(outFile, done.shortUrl ?? 'Created', false);
+    } finally {
+      btnFile.disabled = !fileInput.files?.length;
+    }
+  });
+</script>
+
+<style>
+  .auth-slot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+</style>

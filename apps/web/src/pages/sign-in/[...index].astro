@@ -1,0 +1,17 @@
+---
+import { SignIn } from '@clerk/astro/components';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Sign in · thelnk">
+  <div class="auth-panel panel">
+    <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />
+  </div>
+</BaseLayout>
+
+<style>
+  .auth-panel {
+    max-width: 28rem;
+    margin: 0 auto;
+  }
+</style>

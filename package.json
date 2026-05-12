@@ -1,0 +1,11 @@
+{
+  "name": "thelnk",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev:web": "bun run --cwd apps/web dev",
+    "dev:worker": "bun run --cwd apps/worker dev",
+    "build:web": "bun run --cwd apps/web build",
+    "types:web": "bun run --cwd apps/web generate-types"
+  }
+}

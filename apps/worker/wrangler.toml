@@ -1,0 +1,19 @@
+name = "thelnk-redirect"
+main = "src/index.ts"
+compatibility_date = "2026-05-12"
+
+# Same D1 database as the Pages app (set real id after `wrangler d1 create thelnk`).
+[[d1_databases]]
+binding = "DB"
+database_name = "thelnk"
+database_id = "00000000-0000-0000-0000-000000000001"
+migrations_dir = "../web/migrations"
+
+[vars]
+# Production: https://app.thelnk.is — for local dev override in .dev.vars or CLI.
+APP_ORIGIN = "https://app.thelnk.is"
+
+# Uncomment and set zone when attaching the worker to the apex domain.
+# [[routes]]
+# pattern = "thelnk.is/*"
+# zone_name = "thelnk.is"
