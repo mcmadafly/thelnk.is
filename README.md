@@ -9,7 +9,7 @@ Monorepo for **thelnk** — **apex** `https://thelnk.is`: Astro app (Clerk, D1, 
 | **`thelnk-web`** | `apps/web` | Astro SSR + APIs + static assets. |
 | **`thelnk-short`** | `apps/worker` | Edge router: proxies `/`, `/api/*`, `/f/*`, etc. to **`thelnk-web`** via a **service binding** (`WEB`); single-segment short slugs hit D1 and redirect. |
 
-Deploy **thelnk-web** before **thelnk-short** (the short worker binds to `thelnk-web`). After renaming, delete obsolete scripts **`apps-web`** and **`thelnk-redirect`** in the Cloudflare dashboard if they still exist.
+Deploy **thelnk-web** before **thelnk-short** (the short worker binds to `thelnk-web`). Obsolete scripts **`apps-web`** and **`thelnk-redirect`** can be removed with `bunx wrangler delete <name> --force` (already done if you cleaned up after the rename).
 
 **Custom domain:** attach **`thelnk.is`** (and `www` if you use it) only to **`thelnk-short`**. Do not attach the same hostname to **`thelnk-web`**; traffic reaches Astro through the service binding.
 
