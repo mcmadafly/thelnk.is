@@ -6,7 +6,7 @@ import cloudflare from '@astrojs/cloudflare';
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
-  site: 'https://app.thelnk.is',
+  site: 'https://thelnk.is',
   integrations: [clerk()],
   adapter: cloudflare(),
 });

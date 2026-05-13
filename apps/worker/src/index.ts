@@ -16,15 +16,35 @@ function notFound(): Response {
   return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
 }
 
-function limitHtml(appOrigin: string): Response {
+function limitHtml(origin: string): Response {
   const body = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Link limit reached · thelnk</title></head><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:2rem auto;padding:0 1rem">
 <h1>Link limit reached</h1>
-<p>This short URL has already been used the maximum number of times. Upgrade on the app for unlimited links, or create a new one.</p>
-<p><a href="${appOrigin}">Open thelnk app</a></p>
+<p>This short URL has already been used the maximum number of times.</p>
+<p><a href="${origin}/">Back to thelnk</a></p>
 </body></html>`;
   return new Response(body, { status: 403, headers: { 'content-type': 'text/html; charset=utf-8' } });
+}
+
+function pathParts(pathname: string): string[] {
+  const p = pathname.replace(/\/+$/, '') || '/';
+  if (p === '/') return [];
+  return p.slice(1).split('/').filter(Boolean);
+}
+
+/** Single-segment path that might be a stored short slug (not /api, /f, etc.). */
+function isShortSlugOnlyPath(pathname: string): boolean {
+  const parts = pathParts(pathname);
+  return parts.length === 1 && isSlugToken(parts[0]!);
+}
+
+async function fetchWeb(req: Request, env: Env): Promise<Response> {
+  if (env.WEB) {
+    return env.WEB.fetch(req);
+  }
+  const url = new URL(req.url);
+  return Response.redirect(new URL(url.pathname + url.search, env.APP_ORIGIN).toString(), 302);
 }
 
 export default {
@@ -32,23 +52,20 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname.replace(/\/+$/, '') || '/';
 
-    if (path === '/') {
-      return Response.redirect(new URL('/', env.APP_ORIGIN).toString(), 302);
+    if (!isShortSlugOnlyPath(path)) {
+      return fetchWeb(req, env);
     }
 
-    const slug = path.slice(1).split('/')[0] ?? '';
-    if (!slug || !isSlugToken(slug)) {
-      return notFound();
-    }
+    const slug = pathParts(path)[0]!;
 
     const meta = await env.DB.prepare(`SELECT type FROM links WHERE slug = ?`).bind(slug).first<{ type: string }>();
 
     if (!meta) {
-      return notFound();
+      return fetchWeb(req, env);
     }
 
     if (meta.type === 'file') {
-      const dest = new URL(`/f/${encodeURIComponent(slug)}`, env.APP_ORIGIN);
+      const dest = new URL(`/f/${encodeURIComponent(slug)}`, url.origin);
       return Response.redirect(dest.toString(), 302);
     }
 
@@ -71,7 +88,7 @@ export default {
       if (!still) {
         return notFound();
       }
-      return limitHtml(env.APP_ORIGIN);
+      return limitHtml(url.origin);
     }
 
     return Response.redirect(row.target_url, 302);

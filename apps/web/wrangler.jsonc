@@ -1,7 +1,7 @@
 {
 	"compatibility_date": "2026-05-12",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-	"name": "apps-web",
+	"name": "thelnk-web",
 	"main": "@astrojs/cloudflare/entrypoints/server",
 	"assets": {
 		"directory": "./dist",
@@ -31,9 +31,9 @@
 		}
 	],
 	"vars": {
-		"R2_ACCOUNT_ID": "",
+		"R2_ACCOUNT_ID": "9acf5bdc7c2c3d46f02c207c438bc7a0",
 		"R2_BUCKET_NAME": "thelnk",
-		"PUBLIC_APP_ORIGIN": "https://app.thelnk.is",
+		"PUBLIC_APP_ORIGIN": "https://thelnk.is",
 		"PUBLIC_SHORT_ORIGIN": "https://thelnk.is"
 	}
 }

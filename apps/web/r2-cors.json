@@ -2,7 +2,7 @@
   "rules": [
     {
       "allowed": {
-        "origins": ["http://localhost:4321", "http://127.0.0.1:4321", "https://app.thelnk.is"],
+        "origins": ["http://localhost:4321", "http://127.0.0.1:4321", "https://thelnk.is"],
         "methods": ["GET", "HEAD", "PUT"],
         "headers": ["Content-Type", "Content-Length"]
       },
