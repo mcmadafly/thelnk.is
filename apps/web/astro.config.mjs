@@ -7,6 +7,6 @@ import cloudflare from '@astrojs/cloudflare';
 export default defineConfig({
   output: 'server',
   site: 'https://thelnk.is',
-  integrations: [clerk()],
+  integrations: [clerk({ enableEnvSchema: false })],
   adapter: cloudflare(),
 });
