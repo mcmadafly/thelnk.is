@@ -70,9 +70,16 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ targetUrl }),
     });
-    const data = (await res.json().catch(() => ({}))) as { shortUrl?: string; error?: string };
+    const data = (await res.json().catch(() => ({}))) as {
+      shortUrl?: string;
+      error?: string;
+      detail?: string;
+      reason?: string;
+    };
     if (!res.ok) {
-      show(outUrl, data.error ?? res.statusText, true);
+      const base = data.error ?? res.statusText;
+      const bits = [data.reason, data.detail].filter(Boolean);
+      show(outUrl, bits.length ? `${base} — ${bits.join(' — ')}` : base, true);
       return;
     }
     show(outUrl, data.shortUrl ?? 'Created', false);
@@ -130,9 +137,16 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
           size: init.size ?? file.size,
         }),
       });
-      const done = (await doneRes.json().catch(() => ({}))) as { shortUrl?: string; error?: string };
+      const done = (await doneRes.json().catch(() => ({}))) as {
+        shortUrl?: string;
+        error?: string;
+        detail?: string;
+        reason?: string;
+      };
       if (!doneRes.ok) {
-        show(outFile, done.error ?? doneRes.statusText, true);
+        const base = done.error ?? doneRes.statusText;
+        const bits = [done.reason, done.detail].filter(Boolean);
+        show(outFile, bits.length ? `${base} — ${bits.join(' — ')}` : base, true);
         return;
       }
       show(outFile, done.shortUrl ?? 'Created', false);

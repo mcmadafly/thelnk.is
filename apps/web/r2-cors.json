@@ -1,0 +1,13 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": ["http://localhost:4321", "http://127.0.0.1:4321", "https://app.thelnk.is"],
+        "methods": ["GET", "HEAD", "PUT"],
+        "headers": ["Content-Type", "Content-Length"]
+      },
+      "exposeHeaders": ["ETag"],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}

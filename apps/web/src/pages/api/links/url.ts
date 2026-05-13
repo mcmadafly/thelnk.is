@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { devDetail } from '../../../lib/dev-detail';
 import { maxUsesForNewLink } from '../../../lib/plan';
 import { newSlugCandidate } from '../../../lib/slug';
 import { normalizeHttpUrl } from '../../../lib/urls';
@@ -27,8 +28,23 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const auth = await locals.auth();
   const clerkUserId = auth.userId ?? null;
   const createdAt = Math.floor(Date.now() / 1000);
-  const maxUses = await maxUsesForNewLink(clerkUserId);
+  let maxUses: number;
+  try {
+    maxUses = await maxUsesForNewLink(clerkUserId);
+  } catch (e) {
+    console.error('[api/links/url] maxUsesForNewLink failed', e);
+    const detail = devDetail(e);
+    return Response.json(
+      {
+        error: 'Could not read creator plan (D1)',
+        reason: 'db_plan',
+        ...(detail ? { detail } : {}),
+      },
+      { status: 503 },
+    );
+  }
 
+  let lastInsertError: unknown;
   for (let attempt = 0; attempt < 10; attempt++) {
     const slug = newSlugCandidate();
     try {
@@ -42,10 +58,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const short = `${env.PUBLIC_SHORT_ORIGIN.replace(/\/+$/, '')}/${slug}`;
       return Response.json({ slug, shortUrl: short, maxUses });
     } catch (e) {
-      /* Slug collision is rare; most failures are D1 / schema — log so dev is diagnosable. */
+      lastInsertError = e;
       console.error('[api/links/url] insert failed', e);
     }
   }
 
-  return Response.json({ error: 'Could not allocate slug' }, { status: 503 });
+  const detail = devDetail(lastInsertError);
+  return Response.json(
+    {
+      error: 'Could not allocate slug',
+      reason: 'db_insert',
+      ...(detail ? { detail } : {}),
+    },
+    { status: 503 },
+  );
 };

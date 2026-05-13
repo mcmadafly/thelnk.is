@@ -27,6 +27,61 @@ function objectUrl(key: string): URL {
   return u;
 }
 
+function parseContentRangeTotal(contentRange: string | null): number | null {
+  if (!contentRange) return null;
+  const m = /\/(\d+)\s*$/.exec(contentRange);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function contentLengthFrom(res: Response): number | null {
+  const cl = res.headers.get('content-length');
+  if (cl == null || cl === '') return null;
+  const n = Number(cl);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Object size from remote R2 (S3 API), or null if missing.
+ * Uses the same endpoint/credentials as presigned PUT.
+ * Tries HEAD first; falls back to a ranged GET (bytes 0-0) when HEAD omits Content-Length (common on R2).
+ */
+export async function r2HeadObjectSize(key: string): Promise<number | null> {
+  const aws = r2Aws();
+  const base = objectUrl(key);
+
+  const uHead = new URL(base.href);
+  uHead.searchParams.set('X-Amz-Expires', '120');
+  const headSigned = await aws.sign(uHead.toString(), {
+    method: 'HEAD',
+    aws: { signQuery: true },
+  });
+  const headRes = await fetch(headSigned.url, { method: 'HEAD' });
+  if (headRes.status === 404) return null;
+  if (headRes.ok) {
+    const fromCl = contentLengthFrom(headRes);
+    if (fromCl != null) return fromCl;
+  }
+
+  const uGet = new URL(base.href);
+  uGet.searchParams.set('X-Amz-Expires', '120');
+  const getSigned = await aws.sign(uGet.toString(), {
+    method: 'GET',
+    headers: { Range: 'bytes=0-0' },
+    aws: { signQuery: true, allHeaders: true },
+  });
+  const getRes = await fetch(getSigned.url, {
+    method: 'GET',
+    headers: { Range: 'bytes=0-0' },
+  });
+  if (getRes.status === 404) return null;
+  if (!getRes.ok) return null;
+  const fromRange = parseContentRangeTotal(getRes.headers.get('content-range'));
+  if (fromRange != null) return fromRange;
+  return contentLengthFrom(getRes);
+}
+
 /** Presigned PUT for direct browser upload (15 minutes). */
 export async function presignPut(key: string, contentType: string, contentLength: number): Promise<string> {
   const aws = r2Aws();

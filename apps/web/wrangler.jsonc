@@ -27,12 +27,12 @@
 	"r2_buckets": [
 		{
 			"binding": "FILES",
-			"bucket_name": "thelnk-files"
+			"bucket_name": "thelnk"
 		}
 	],
 	"vars": {
 		"R2_ACCOUNT_ID": "",
-		"R2_BUCKET_NAME": "thelnk-files",
+		"R2_BUCKET_NAME": "thelnk",
 		"PUBLIC_APP_ORIGIN": "https://app.thelnk.is",
 		"PUBLIC_SHORT_ORIGIN": "https://thelnk.is"
 	}
