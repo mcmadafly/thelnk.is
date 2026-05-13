@@ -1,17 +1,16 @@
 # thelnk.is
 
-Monorepo for **thelnk** — **apex** `https://thelnk.is`: Astro app (Clerk, D1, R2) plus short links `/:slug` on the same host.
+Monorepo for **thelnk** — **apex** `https://thelnk.is`: one Cloudflare Worker (**`thelnk-web`**) runs Astro (Clerk, D1, R2) and handles short links `/:slug` on the same host.
 
 ## Workers (Cloudflare)
 
 | Wrangler `name` | Directory | Role |
 |-----------------|-----------|------|
-| **`thelnk-web`** | `apps/web` | Astro SSR + APIs + static assets. |
-| **`thelnk-short`** | `apps/worker` | Edge router: proxies `/`, `/api/*`, `/f/*`, etc. to **`thelnk-web`** via a **service binding** (`WEB`); single-segment short slugs hit D1 and redirect. |
+| **`thelnk-web`** | `apps/web` | Astro SSR + APIs + static assets + **URL short redirects** at `GET /:slug` (D1). |
 
-Deploy **thelnk-web** before **thelnk-short** (the short worker binds to `thelnk-web`). Obsolete scripts **`apps-web`** and **`thelnk-redirect`** can be removed with `bunx wrangler delete <name> --force` (already done if you cleaned up after the rename).
+Deploy **`thelnk-web`** only. Obsolete scripts **`apps-web`**, **`thelnk-redirect`**, and the old **`thelnk-short`** router can be removed with `bunx wrangler delete <name> --force` once DNS no longer points at them.
 
-**Custom domain:** attach **`thelnk.is`** (and `www` if you use it) only to **`thelnk-short`**. Do not attach the same hostname to **`thelnk-web`**; traffic reaches Astro through the service binding.
+**Custom domain:** attach **`thelnk.is`** (and `www` if you use it) to **`thelnk-web`**. You do **not** need a second Worker or service binding for slugs.
 
 **Clerk:** add **`https://thelnk.is`** (and dev origins) under allowed origins / redirect URLs in the Clerk dashboard.
 
@@ -27,16 +26,14 @@ Deploy **thelnk-web** before **thelnk-short** (the short worker binds to `thelnk
 
 ## One-time Cloudflare setup
 
-1. **D1**: `cd apps/web && bunx wrangler d1 create thelnk` — copy the `database_id` into:
-   - `apps/web/wrangler.jsonc` → `d1_databases[0].database_id`
-   - `apps/worker/wrangler.toml` → `database_id` under `[[d1_databases]]`
+1. **D1**: `cd apps/web && bunx wrangler d1 create thelnk` — copy the `database_id` into `apps/web/wrangler.jsonc` → `d1_databases[0].database_id`.
 2. **Apply migrations** (local): `bunx wrangler d1 migrations apply thelnk --local`  
    Production: `bunx wrangler d1 migrations apply thelnk --remote`
 3. **R2**: create bucket **`thelnk`** (or set `bucket_name` / `R2_BUCKET_NAME` consistently in `wrangler.jsonc`). Create **R2 API tokens** (Access Key ID + Secret Access Key).
 4. **R2 CORS** (browser `PUT`): allow origin **`https://thelnk.is`** (and `http://localhost:4321` for dev). From `apps/web`:  
    `bunx wrangler r2 bucket cors set thelnk --file r2-cors.json -y`
-5. **Deploy** `apps/web` then `apps/worker` (`bunx wrangler deploy` in each directory).
-6. **DNS / routes**: point **`thelnk.is`** at **`thelnk-short`** (Workers custom domain or zone route `thelnk.is/*`).
+5. **Deploy** `apps/web` (`bunx wrangler deploy` in that directory).
+6. **DNS / routes**: point **`thelnk.is`** at **`thelnk-web`** (Workers custom domain or zone route `thelnk.is/*`).
 
 After changing `wrangler.jsonc` bindings, refresh TypeScript env types:
 
@@ -52,7 +49,7 @@ bunx wrangler d1 migrations apply thelnk --local
 PUBLIC_CLERK_PUBLISHABLE_KEY=... CLERK_SECRET_KEY=... bun run dev
 ```
 
-**Short worker** (`apps/worker`): with a **service binding** to `thelnk-web`, `wrangler dev` expects the Astro worker to exist in the account. For a quick local loop without the binding, set **`APP_ORIGIN=http://localhost:4321`** in `.dev.vars` there; **`/`** will redirect to the dev server instead of `env.WEB.fetch` when the binding is absent (see `src/index.ts`).
+Short links in dev: open `http://localhost:4321/<slug>` after creating a link; the same `[slug]` route runs as in production.
 
 **Note:** local D1 is per Wrangler project unless you use `--remote` on both. For full local E2E, use remote D1 or test against deployed workers.
 
@@ -68,7 +65,7 @@ bun install   # if using root package.json workspaces
 
 ## Analytics and use limits
 
-- Each **URL** short link stores `use_count` / `max_uses` in D1. A successful hit on `thelnk.is/:slug` increments `use_count` on **thelnk-short** before redirecting. Default **`max_uses` = 10** for anonymous and free signed-in creators.
+- Each **URL** short link stores `use_count` / `max_uses` in D1. A successful hit on `thelnk.is/:slug` increments `use_count` in **`apps/web/src/pages/[slug].ts`** before redirecting. Default **`max_uses` = 10** for anonymous and free signed-in creators.
 - Each **file** short link counts a use on **each completed download** (`GET /api/download/:slug`), not when opening the branded landing page. Premium creators get **`max_uses = -1`** (unlimited) on links created while they are premium.
 - **`users`** table: `clerk_user_id`, `plan` (`free` \| `premium`). New links read the creator’s plan at insert time and store `max_uses` on the row.
 
