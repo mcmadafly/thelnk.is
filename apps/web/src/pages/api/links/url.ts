@@ -41,8 +41,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
       const short = `${env.PUBLIC_SHORT_ORIGIN.replace(/\/+$/, '')}/${slug}`;
       return Response.json({ slug, shortUrl: short, maxUses });
-    } catch {
-      /* slug collision — retry */
+    } catch (e) {
+      /* Slug collision is rare; most failures are D1 / schema — log so dev is diagnosable. */
+      console.error('[api/links/url] insert failed', e);
     }
   }
 

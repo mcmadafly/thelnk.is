@@ -14,8 +14,14 @@
 		{
 			"binding": "DB",
 			"database_name": "thelnk",
-			"database_id": "00000000-0000-0000-0000-000000000001",
+			"database_id": "23bf7d86-e447-4fc3-8f64-3881ae393649",
 			"migrations_dir": "migrations"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "SESSION",
+			"id": "aa5f255656564e2eb00e870d228467b4"
 		}
 	],
 	"r2_buckets": [
