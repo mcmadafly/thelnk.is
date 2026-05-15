@@ -6,7 +6,8 @@ interface Props {
   description?: string;
 }
 
-const { title = 'thelnk', description = 'Short links and file drops.' } = Astro.props;
+const { title = 'thelnk.is — Short links & file sharing', description = 'Shorten any URL and share any file instantly. No account required. Free forever.' } = Astro.props;
+const siteUrl = 'https://thelnk.is';
 ---
 
 <!doctype html>
@@ -15,24 +16,49 @@ const { title = 'thelnk', description = 'Short links and file drops.' } = Astro.
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href={siteUrl} />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={siteUrl} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:site_name" content="thelnk.is" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <!-- JSON-LD -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "thelnk.is",
+      "url": siteUrl,
+      "description": description,
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Web",
+      "offers": [
+        { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD" },
+        { "@type": "Offer", "name": "Pro", "price": "4.99", "priceCurrency": "USD" }
+      ]
+    })} />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
     <div class="shell">
       <header class="top">
-        <a class="brand" href="/">thelnk</a>
-        <nav class="nav">
-          <a href="/">Create</a>
-          <span class="nav-sep" aria-hidden="true">·</span>
-          <a href="https://thelnk.is" target="_blank" rel="noopener noreferrer">Short domain</a>
-        </nav>
+        <a class="brand" href="/">THELNK.IS</a>
         <div class="auth">
           <slot name="auth" />
         </div>
@@ -41,7 +67,8 @@ const { title = 'thelnk', description = 'Short links and file drops.' } = Astro.
         <slot />
       </main>
       <footer class="foot">
-        <span>Built for <strong>thelnk.is</strong></span>
+        <span>THELNK.IS</span>
+        <span>SHORT LINKS &amp; FILE DROPS</span>
       </footer>
     </div>
   </body>

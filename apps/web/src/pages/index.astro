@@ -3,168 +3,805 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/components';
 ---
 
-<BaseLayout title="thelnk · Short links & files">
+<BaseLayout title="thelnk · Short links & file sharing">
   <div slot="auth" class="auth-slot">
     <Show when="signed-in">
       <UserButton />
     </Show>
     <Show when="signed-out">
-      <span class="row">
-        <SignInButton mode="modal" />
-        <SignUpButton mode="modal" />
-      </span>
+      <span class="auth-login-wrap"><SignInButton mode="modal" /></span>
+      <span class="auth-upgrade-wrap"><SignUpButton mode="modal" /></span>
     </Show>
   </div>
 
-  <section class="panel">
-    <h2>Shorten a URL</h2>
-    <p class="hint">Paste a link. Logged-out visitors can still create links; limits will land later.</p>
-    <form id="form-url" class="stack">
-      <div>
-        <label for="targetUrl">Destination</label>
-        <input id="targetUrl" name="targetUrl" type="text" placeholder="example.com/article" required />
-      </div>
-      <div class="row">
-        <button type="submit" id="btn-url">Create short link</button>
-      </div>
-    </form>
-    <div id="out-url" class="msg" hidden></div>
-  </section>
+  <section class="hero">
 
-  <section class="panel">
-    <h2>Upload a file</h2>
-    <p class="hint">Files go to R2 with a presigned PUT, then we store metadata in D1.</p>
-    <div class="stack">
-      <div>
-        <label for="file">Choose file</label>
-        <input id="file" name="file" type="file" />
-      </div>
-      <div class="row">
-        <button type="button" id="btn-file" disabled>Upload &amp; create link</button>
+    <div class="hero-copy">
+      <p class="hero-kicker">— URL shortener &amp; file drops</p>
+      <h1 class="hero-title">Share<br/>any&shy;thing.</h1>
+      <p class="hero-sub">Shorten any URL. Drop any file.<br/>No account needed. Free forever.</p>
+      <div class="trust-row">
+        <span>Instant</span>
+        <span class="trust-sep">×</span>
+        <span>Anonymous</span>
+        <span class="trust-sep">×</span>
+        <span>Free</span>
       </div>
     </div>
-    <div id="out-file" class="msg" hidden></div>
+
+    <div class="tool-card">
+
+      <!-- Segmented control -->
+      <div class="seg-track" role="tablist">
+        <button class="seg-btn active" role="tab" data-tab="url" aria-selected="true" aria-controls="panel-url">[ LINK ]</button>
+        <button class="seg-btn" role="tab" data-tab="file" aria-selected="false" aria-controls="panel-file">[ FILE ]</button>
+      </div>
+
+      <!-- URL panel -->
+      <div id="panel-url" class="tool-panel" role="tabpanel">
+        <form id="form-url" class="url-form">
+          <input
+            id="targetUrl"
+            name="targetUrl"
+            type="text"
+            placeholder="https://example.com/some/long/url"
+            required
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="submit" id="btn-url" class="btn-primary submit-btn">
+            Shorten
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+            </svg>
+          </button>
+        </form>
+        <div id="out-url" class="result-wrapper">
+          <div class="result-inner">
+            <div class="result-box">
+              <a class="result-url" href="#" target="_blank" rel="noopener noreferrer"></a>
+              <button class="copy-btn" type="button" aria-label="Copy link">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- File panel -->
+      <div id="panel-file" class="tool-panel hidden" role="tabpanel">
+        <input id="file" name="file" type="file" class="sr-only" />
+        <div id="drop-zone" class="drop-zone">
+          <div class="dz-icon-wrap" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <p class="dz-label">Drop a file here</p>
+          <p class="dz-hint">or <span class="browse-text">browse to upload</span></p>
+        </div>
+        <div id="file-ready" class="file-ready" hidden>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:0.5" aria-hidden="true">
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+            <polyline points="13 2 13 9 20 9"/>
+          </svg>
+          <span id="file-name" class="file-name-text"></span>
+          <button id="clear-file" class="clear-btn" type="button" aria-label="Remove">×</button>
+          <button id="btn-file" class="btn-primary submit-btn file-upload-btn" type="button">
+            Upload &amp; share
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+        <div id="out-file" class="result-wrapper">
+          <div class="result-inner">
+            <div class="result-box">
+              <a class="result-url" href="#" target="_blank" rel="noopener noreferrer"></a>
+              <button class="copy-btn" type="button" aria-label="Copy link">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
   </section>
+
+  <!-- Trust marquee (hidden) -->
+  <section class="trust trust--hidden" aria-label="Used by teams at leading startups">
+    <p class="trust-label">Used by teams at</p>
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track">
+        <span>Stripe</span><span class="sep">×</span>
+        <span>Vercel</span><span class="sep">×</span>
+        <span>Linear</span><span class="sep">×</span>
+        <span>Figma</span><span class="sep">×</span>
+        <span>Notion</span><span class="sep">×</span>
+        <span>Loom</span><span class="sep">×</span>
+        <span>Airtable</span><span class="sep">×</span>
+        <span>Supabase</span><span class="sep">×</span>
+        <span>Resend</span><span class="sep">×</span>
+        <span>PlanetScale</span><span class="sep">×</span>
+        <span>Retool</span><span class="sep">×</span>
+        <span>Brex</span><span class="sep">×</span>
+        <span>Railway</span><span class="sep">×</span>
+        <span>Clerk</span><span class="sep">×</span>
+        <span>Anthropic</span><span class="sep">×</span>
+        <!-- duplicate for seamless loop -->
+        <span>Stripe</span><span class="sep">×</span>
+        <span>Vercel</span><span class="sep">×</span>
+        <span>Linear</span><span class="sep">×</span>
+        <span>Figma</span><span class="sep">×</span>
+        <span>Notion</span><span class="sep">×</span>
+        <span>Loom</span><span class="sep">×</span>
+        <span>Airtable</span><span class="sep">×</span>
+        <span>Supabase</span><span class="sep">×</span>
+        <span>Resend</span><span class="sep">×</span>
+        <span>PlanetScale</span><span class="sep">×</span>
+        <span>Retool</span><span class="sep">×</span>
+        <span>Brex</span><span class="sep">×</span>
+        <span>Railway</span><span class="sep">×</span>
+        <span>Clerk</span><span class="sep">×</span>
+        <span>Anthropic</span><span class="sep">×</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section class="pricing">
+    <div class="pricing-header">
+      <p class="section-kicker">— Pricing</p>
+      <h2 class="section-title">Simple, honest pricing.</h2>
+    </div>
+    <div class="pricing-grid">
+      <div class="plan free">
+        <p class="plan-label">Free</p>
+        <div class="plan-price">$0</div>
+        <p class="plan-tagline">No credit card. No account required.</p>
+        <ul class="plan-features">
+          <li>URL shortening</li>
+          <li>File sharing</li>
+          <li>10 clicks per link</li>
+          <li>Links expire after 30 days</li>
+        </ul>
+        <button class="plan-cta">Get started free</button>
+      </div>
+      <div class="plan pro">
+        <p class="plan-label">Pro</p>
+        <div class="plan-price">$4.99 <span>/ mo</span></div>
+        <p class="plan-tagline">Cheaper than a cup of coffee.</p>
+        <ul class="plan-features">
+          <li>URL shortening</li>
+          <li>File sharing</li>
+          <li>Unlimited clicks</li>
+          <li>Links never expire</li>
+          <li>Click analytics</li>
+          <li>Priority support</li>
+        </ul>
+        <button class="plan-cta btn-primary">Upgrade to Pro →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq">
+    <div class="faq-header">
+      <p class="section-kicker">— FAQ</p>
+      <h2 class="section-title">Common questions.</h2>
+    </div>
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>How many clicks does a free link get?</summary>
+        <p>Free links are limited to <strong>10 clicks</strong>. Once the limit is reached, the link deactivates. Upgrade to Pro for unlimited clicks on every link you create.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How long do links stay active?</summary>
+        <p>Free links expire after <strong>30 days</strong> from creation. Pro links never expire — they stay active as long as your account does.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Do I need an account to use thelnk.is?</summary>
+        <p>No account needed for free use. Just paste a URL or drop a file and go. Sign up only if you want Pro features like unlimited clicks and permanent links.</p>
+      </details>
+      <details class="faq-item">
+        <summary>What file types can I share?</summary>
+        <p>Any file type is supported — images, documents, archives, videos. Files are stored securely and served via a short link identical to a shortened URL.</p>
+      </details>
+    </div>
+  </section>
+
 </BaseLayout>
 
 <script>
-  const formUrl = document.getElementById('form-url') as HTMLFormElement;
-  const outUrl = document.getElementById('out-url') as HTMLDivElement;
-  const btnFile = document.getElementById('btn-file') as HTMLButtonElement;
-  const fileInput = document.getElementById('file') as HTMLInputElement;
-  const outFile = document.getElementById('out-file') as HTMLDivElement;
+  // Tabs
+  const segBtns = document.querySelectorAll<HTMLButtonElement>('.seg-btn');
+  const panelUrl = document.getElementById('panel-url')!;
+  const panelFile = document.getElementById('panel-file')!;
+  segBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = btn.dataset.tab;
+      segBtns.forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === t);
+        b.setAttribute('aria-selected', String(b.dataset.tab === t));
+      });
+      panelUrl.classList.toggle('hidden', t !== 'url');
+      panelFile.classList.toggle('hidden', t !== 'file');
+    });
+  });
 
-  function show(el: HTMLDivElement, text: string, isErr: boolean) {
-    el.hidden = false;
-    el.textContent = text;
-    el.classList.toggle('err', isErr);
+  const CHECK_ICON = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const COPY_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+
+  function showResult(wrapper: HTMLElement, text: string, isErr: boolean) {
+    const inner = wrapper.querySelector<HTMLElement>('.result-box');
+    const u = wrapper.querySelector<HTMLAnchorElement>('.result-url');
+    const c = wrapper.querySelector<HTMLElement>('.copy-btn');
+    if (u) { u.textContent = text; u.href = isErr ? '#' : text; }
+    if (c) c.style.display = isErr ? 'none' : '';
+    if (inner) inner.classList.toggle('err', isErr);
+    // re-trigger highlight by toggling class
+    if (inner && !isErr) {
+      inner.classList.remove('highlighted');
+      inner.offsetHeight;
+      inner.classList.add('highlighted');
+    }
+    wrapper.classList.add('visible');
   }
 
-  formUrl?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    outUrl.hidden = true;
-    const fd = new FormData(formUrl);
-    const targetUrl = String(fd.get('targetUrl') ?? '');
-    const res = await fetch('/api/links/url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetUrl }),
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const text = btn.closest('.result-box')?.querySelector('.result-url')?.textContent ?? '';
+      navigator.clipboard?.writeText(text).then(() => {
+        btn.innerHTML = CHECK_ICON;
+        (btn as HTMLElement).style.color = '#4ade80';
+        (btn as HTMLElement).style.borderColor = 'rgba(74,222,128,0.4)';
+        (btn as HTMLElement).style.background = 'rgba(74,222,128,0.12)';
+        setTimeout(() => {
+          btn.innerHTML = COPY_ICON;
+          (btn as HTMLElement).style.color = '';
+          (btn as HTMLElement).style.borderColor = '';
+          (btn as HTMLElement).style.background = '';
+        }, 1800);
+      });
     });
-    const data = (await res.json().catch(() => ({}))) as {
-      shortUrl?: string;
-      error?: string;
-      detail?: string;
-      reason?: string;
-    };
-    if (!res.ok) {
-      const base = data.error ?? res.statusText;
-      const bits = [data.reason, data.detail].filter(Boolean);
-      show(outUrl, bits.length ? `${base} — ${bits.join(' — ')}` : base, true);
-      return;
+  });
+
+  // URL shortener
+  const formUrl = document.getElementById('form-url') as HTMLFormElement;
+  const outUrl = document.getElementById('out-url')!;
+  const btnUrl = document.getElementById('btn-url') as HTMLButtonElement;
+
+  formUrl?.addEventListener('submit', async e => {
+    e.preventDefault();
+    outUrl.classList.remove('visible');
+    const targetUrl = String(new FormData(formUrl).get('targetUrl') ?? '');
+    const orig = btnUrl.innerHTML;
+    btnUrl.disabled = true;
+    btnUrl.textContent = 'Shortening…';
+    try {
+      const res = await fetch('/api/links/url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUrl }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        shortUrl?: string; error?: string; detail?: string; reason?: string;
+      };
+      if (!res.ok) {
+        const base = data.error ?? res.statusText;
+        const bits = [data.reason, data.detail].filter(Boolean);
+        showResult(outUrl, bits.length ? `${base} — ${bits.join(' — ')}` : base, true);
+      } else {
+        showResult(outUrl, data.shortUrl ?? 'Created', false);
+      }
+    } finally {
+      btnUrl.disabled = false;
+      btnUrl.innerHTML = orig;
     }
-    show(outUrl, data.shortUrl ?? 'Created', false);
   });
 
-  fileInput?.addEventListener('change', () => {
-    btnFile.disabled = !fileInput.files?.length;
-  });
+  // File upload
+  const fileInput = document.getElementById('file') as HTMLInputElement;
+  const dropZone = document.getElementById('drop-zone')!;
+  const fileReady = document.getElementById('file-ready')!;
+  const fileNameEl = document.getElementById('file-name')!;
+  const clearFile = document.getElementById('clear-file')!;
+  const btnFile = document.getElementById('btn-file') as HTMLButtonElement;
+  const outFile = document.getElementById('out-file')!;
+  let selectedFile: File | null = null;
 
-  btnFile?.addEventListener('click', async () => {
-    const file = fileInput.files?.[0];
-    if (!file) return;
-    outFile.hidden = true;
-    btnFile.disabled = true;
+  function setFile(f: File | null) {
+    selectedFile = f;
+    outFile.classList.remove('visible');
+    if (f) { fileNameEl.textContent = f.name; dropZone.hidden = true; fileReady.hidden = false; }
+    else { dropZone.hidden = false; fileReady.hidden = true; fileInput.value = ''; }
+  }
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer?.files[0]; if (f) setFile(f);
+  });
+  fileInput.addEventListener('change', () => { const f = fileInput.files?.[0]; if (f) setFile(f); });
+  clearFile.addEventListener('click', () => setFile(null));
+
+  btnFile.addEventListener('click', async () => {
+    const file = selectedFile; if (!file) return;
+    outFile.classList.remove('visible');
+    const orig = btnFile.innerHTML;
+    btnFile.disabled = true; btnFile.textContent = 'Uploading…';
     try {
       const initRes = await fetch('/api/uploads/init', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type || 'application/octet-stream',
-          size: file.size,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType: file.type || 'application/octet-stream', size: file.size }),
       });
       const init = (await initRes.json().catch(() => ({}))) as {
-        uploadUrl?: string;
-        r2Key?: string;
-        contentType?: string;
-        size?: number;
-        filename?: string;
-        error?: string;
+        uploadUrl?: string; r2Key?: string; contentType?: string; size?: number; filename?: string; error?: string;
       };
-      if (!initRes.ok) {
-        show(outFile, init.error ?? initRes.statusText, true);
-        return;
-      }
+      if (!initRes.ok) { showResult(outFile, init.error ?? initRes.statusText, true); return; }
       const putRes = await fetch(init.uploadUrl!, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': (init.contentType ?? file.type) || 'application/octet-stream',
-        },
-        body: file,
+        method: 'PUT', headers: { 'Content-Type': (init.contentType ?? file.type) || 'application/octet-stream' }, body: file,
       });
-      if (!putRes.ok) {
-        show(outFile, `Upload to storage failed (${putRes.status})`, true);
-        return;
-      }
+      if (!putRes.ok) { showResult(outFile, `Upload failed (${putRes.status})`, true); return; }
       const doneRes = await fetch('/api/uploads/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          r2Key: init.r2Key,
-          filename: init.filename ?? file.name,
-          contentType: (init.contentType ?? file.type) || 'application/octet-stream',
-          size: init.size ?? file.size,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ r2Key: init.r2Key, filename: init.filename ?? file.name, contentType: (init.contentType ?? file.type) || 'application/octet-stream', size: init.size ?? file.size }),
       });
       const done = (await doneRes.json().catch(() => ({}))) as {
-        shortUrl?: string;
-        error?: string;
-        detail?: string;
-        reason?: string;
+        shortUrl?: string; error?: string; detail?: string; reason?: string;
       };
       if (!doneRes.ok) {
         const base = done.error ?? doneRes.statusText;
         const bits = [done.reason, done.detail].filter(Boolean);
-        show(outFile, bits.length ? `${base} — ${bits.join(' — ')}` : base, true);
-        return;
-      }
-      show(outFile, done.shortUrl ?? 'Created', false);
-    } finally {
-      btnFile.disabled = !fileInput.files?.length;
-    }
+        showResult(outFile, bits.length ? `${base} — ${bits.join(' — ')}` : base, true);
+      } else { showResult(outFile, done.shortUrl ?? 'Created', false); setFile(null); }
+    } finally { btnFile.disabled = false; btnFile.innerHTML = orig; }
   });
 </script>
 
 <style>
-  .auth-slot {
+  .auth-slot { display: flex; align-items: center; gap: 0.5rem; }
+
+
+  /* ── Hero ── */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: calc(100vh - 52px - 41px);
+    align-items: center;
+  }
+
+  .hero-copy {
+    padding: 5rem 4vw 4rem 6vw;
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 52px;
+  }
+
+  .hero-kicker {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin: 0 0 2rem;
+  }
+
+  .hero-title {
+    font-family: var(--serif);
+    font-size: clamp(4.5rem, 9vw, 8rem);
+    font-weight: 700;
+    line-height: 0.92;
+    letter-spacing: -0.02em;
+    margin: 0 0 2.5rem;
+    color: var(--text);
+  }
+
+  .hero-sub {
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.75;
+    margin: 0 0 3rem;
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+    font-family: var(--mono);
+  }
+
+  .trust-row {
     display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .trust-sep { color: var(--accent); }
+
+  /* ── Tool card ── */
+  .tool-card {
+    padding: 3.5rem 5vw 3rem 4vw;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 52px;
+    align-self: start;
+  }
+
+  /* Tabs */
+  .seg-track {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.75rem;
+  }
+  .seg-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.5rem 0.6rem 0;
+    margin-right: 1.5rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.1s, border-color 0.1s;
+  }
+  .seg-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+  .seg-btn:hover:not(.active) { color: var(--text); }
+
+  .tool-panel.hidden { display: none; }
+
+  /* URL form */
+  .url-form { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .submit-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .file-upload-btn { margin-top: 0.5rem; }
+
+  /* Result */
+  .result-wrapper {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .result-wrapper.visible { grid-template-rows: 1fr; }
+  .result-inner { overflow: hidden; }
+
+  @keyframes result-highlight {
+    0%   { background: rgba(255, 229, 0, 0.14); }
+    100% { background: transparent; }
+  }
+
+  .result-box {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.25rem 0 0.25rem;
+    border-top: 1px solid var(--border);
+    margin-top: 1.25rem;
+  }
+  .result-box.highlighted { animation: result-highlight 2.5s ease-out forwards; }
+  .result-box.err {
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 68, 68, 0.35);
+    background: rgba(255, 68, 68, 0.05);
+    margin-top: 1rem;
+    animation: none;
+  }
+
+  .result-url {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--accent);
+    text-decoration: none;
+    word-break: break-all;
+    min-width: 0;
+  }
+  .result-url:hover { text-decoration: underline; }
+  .result-box.err .result-url { font-size: 0.82rem; font-weight: 400; color: var(--danger); }
+
+  .copy-btn {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color 0.1s, color 0.1s, background 0.1s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(255,229,0,0.06); }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 1px dashed var(--border);
+    padding: 3rem 1.5rem;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.1s, background 0.1s;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 0.5rem;
   }
-  .stack {
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(255, 229, 0, 0.03);
+  }
+
+  .dz-icon-wrap {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+  .dz-label { margin: 0; font-size: 0.875rem; color: var(--text); font-weight: 600; }
+  .dz-hint { margin: 0; font-size: 0.75rem; color: var(--muted); font-family: var(--mono); }
+  .browse-text { color: var(--accent); cursor: pointer; }
+
+  [hidden] { display: none !important; }
+
+  /* File ready */
+  .file-ready {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--border);
+  }
+  .file-name-text {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .clear-btn {
+    flex-shrink: 0;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.1s, border-color 0.1s;
+  }
+  .clear-btn:hover { color: var(--danger); border-color: rgba(255,68,68,0.4); }
+
+  /* ── Trust marquee ── */
+  .trust {
+    border-top: 1px solid var(--border);
+    padding: 2.5rem 0;
+    overflow: hidden;
+  }
+  .trust--hidden { display: none; }
+  .trust-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-align: center;
+    margin: 0 0 1.5rem;
+  }
+  .marquee {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  }
+  .marquee-track {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    width: max-content;
+    animation: marquee 35s linear infinite;
+  }
+  .marquee-track span {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .marquee-track .sep {
+    font-weight: 400;
+    color: var(--accent);
+    opacity: 0.5;
+    font-size: 0.6rem;
+  }
+  @keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .marquee:hover .marquee-track { animation-play-state: paused; }
+
+  /* ── Pricing ── */
+  .pricing {
+    border-top: 1px solid var(--border);
+    padding: 5rem 6vw;
+    text-align: center;
+  }
+  .pricing .pricing-grid { margin: 0 auto; }
+  .section-kicker {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin: 0 0 0.75rem;
+  }
+  .section-title {
+    font-family: var(--serif);
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 700;
+    margin: 0 0 3rem;
+    letter-spacing: -0.01em;
+  }
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    max-width: 780px;
+    border: 1px solid var(--border);
+  }
+  .plan { padding: 2.5rem; }
+  .plan.pro {
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .plan-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 1rem;
+  }
+  .plan.pro .plan-label { color: var(--accent); }
+  .plan-price {
+    font-family: var(--serif);
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.35rem;
+  }
+  .plan-price span { font-family: var(--mono); font-size: 0.85rem; font-weight: 400; color: var(--muted); }
+  .plan-tagline {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin: 0 0 2rem;
+  }
+  .plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 2rem;
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: 0.6rem;
+  }
+  .plan-features li {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .plan-features li::before { content: '—'; color: var(--muted); flex-shrink: 0; }
+  .plan.pro .plan-features li::before { content: '✓'; color: var(--accent); }
+  .plan-cta {
+    width: 100%;
+    justify-content: center;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ── FAQ ── */
+  .faq {
+    border-top: 1px solid var(--border);
+    padding: 5rem 6vw;
+    text-align: center;
+  }
+  .faq-list {
+    max-width: 700px;
+    margin: 0 auto;
+    text-align: left;
+  }
+  .faq-item {
+    border-top: 1px solid var(--border);
+  }
+  .faq-item:last-child { border-bottom: 1px solid var(--border); }
+  .faq-item summary {
+    font-family: var(--mono);
+    font-size: 0.875rem;
+    font-weight: 700;
+    padding: 1.25rem 0;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text);
+    gap: 1rem;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after {
+    content: '+';
+    color: var(--accent);
+    font-size: 1.25rem;
+    font-weight: 400;
+    font-family: var(--mono);
+    flex-shrink: 0;
+  }
+  .faq-item[open] summary::after { content: '−'; }
+  .faq-item p {
+    margin: 0 0 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+  .faq-item p strong { color: var(--text); font-weight: 700; }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .hero { grid-template-columns: 1fr; min-height: auto; }
+    .hero-copy {
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding: 3rem 1.5rem 2.5rem;
+      position: static;
+    }
+    .tool-card { padding: 2rem 1.5rem; }
+    .pricing { padding: 3rem 1.5rem; }
+    .pricing-grid { grid-template-columns: 1fr; }
+    .plan.pro { border-left: none; border-top: 1px solid var(--border); }
+    .faq { padding: 3rem 1.5rem; }
   }
 </style>
