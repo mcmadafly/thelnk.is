@@ -42,7 +42,8 @@ const siteUrl = 'https://thelnk.is';
       "operatingSystem": "Web",
       "offers": [
         { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD" },
-        { "@type": "Offer", "name": "Pro", "price": "4.99", "priceCurrency": "USD" }
+        { "@type": "Offer", "name": "Pro monthly", "price": "4.99", "priceCurrency": "USD" },
+        { "@type": "Offer", "name": "Lifetime Pro", "price": "75", "priceCurrency": "USD" }
       ]
     })} />
 
@@ -60,6 +61,7 @@ const siteUrl = 'https://thelnk.is';
       <header class="top">
         <a class="brand" href="/">THELNK.IS</a>
         <div class="auth">
+          <a class="auth-pro-link" href="/#pricing" title="Pro &amp; Lifetime pricing">Pro</a>
           <slot name="auth" />
         </div>
       </header>
@@ -68,6 +70,11 @@ const siteUrl = 'https://thelnk.is';
       </main>
       <footer class="foot">
         <span>THELNK.IS</span>
+        <nav class="foot-nav" aria-label="Legal">
+          <a href="/privacy">Privacy</a>
+          <span class="foot-nav-sep" aria-hidden="true">·</span>
+          <a href="/terms">Terms</a>
+        </nav>
         <span>SHORT LINKS &amp; FILE DROPS</span>
       </footer>
     </div>

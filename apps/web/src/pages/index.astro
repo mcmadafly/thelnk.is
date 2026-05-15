@@ -14,7 +14,7 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     </Show>
   </div>
 
-  <section class="hero">
+  <section class="hero" id="hero">
 
     <div class="hero-copy">
       <p class="hero-kicker">— URL shortener &amp; file drops</p>
@@ -39,7 +39,7 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
 
       <!-- URL panel -->
       <div id="panel-url" class="tool-panel" role="tabpanel">
-        <form id="form-url" class="url-form">
+        <form id="form-url" class="url-form" novalidate>
           <input
             id="targetUrl"
             name="targetUrl"
@@ -49,7 +49,7 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
             autocomplete="off"
             spellcheck="false"
           />
-          <button type="submit" id="btn-url" class="btn-primary submit-btn">
+          <button type="submit" id="btn-url" class="btn-primary submit-btn" aria-live="polite">
             Shorten
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
@@ -59,13 +59,15 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
         <div id="out-url" class="result-wrapper">
           <div class="result-inner">
             <div class="result-box">
-              <a class="result-url" href="#" target="_blank" rel="noopener noreferrer"></a>
-              <button class="copy-btn" type="button" aria-label="Copy link">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="9" y="9" width="13" height="13" rx="2"/>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
-              </button>
+              <div class="result-row">
+                <a class="result-url" href="#" target="_blank" rel="noopener noreferrer"></a>
+                <button class="copy-btn" type="button" aria-label="Copy link">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -86,12 +88,14 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
           <p class="dz-hint">or <span class="browse-text">browse to upload</span></p>
         </div>
         <div id="file-ready" class="file-ready" hidden>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:0.5" aria-hidden="true">
-            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-            <polyline points="13 2 13 9 20 9"/>
-          </svg>
-          <span id="file-name" class="file-name-text"></span>
-          <button id="clear-file" class="clear-btn" type="button" aria-label="Remove">×</button>
+          <div class="file-ready-meta">
+            <span id="file-name" class="file-name-text"></span>
+            <svg class="file-ready-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+              <polyline points="13 2 13 9 20 9"/>
+            </svg>
+            <button id="clear-file" class="clear-btn" type="button" aria-label="Remove">×</button>
+          </div>
           <button id="btn-file" class="btn-primary submit-btn file-upload-btn" type="button">
             Upload &amp; share
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -102,13 +106,15 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
         <div id="out-file" class="result-wrapper">
           <div class="result-inner">
             <div class="result-box">
-              <a class="result-url" href="#" target="_blank" rel="noopener noreferrer"></a>
-              <button class="copy-btn" type="button" aria-label="Copy link">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="9" y="9" width="13" height="13" rx="2"/>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
-              </button>
+              <div class="result-row">
+                <a class="result-url" href="#" target="_blank" rel="noopener noreferrer"></a>
+                <button class="copy-btn" type="button" aria-label="Copy link">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -159,7 +165,7 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   </section>
 
   <!-- Pricing -->
-  <section class="pricing">
+  <section class="pricing" id="pricing">
     <div class="pricing-header">
       <p class="section-kicker">— Pricing</p>
       <h2 class="section-title">Simple, honest pricing.</h2>
@@ -167,29 +173,47 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     <div class="pricing-grid">
       <div class="plan free">
         <p class="plan-label">Free</p>
-        <div class="plan-price">$0</div>
+        <div class="plan-price">
+          <span class="price-value">$0</span>
+        </div>
         <p class="plan-tagline">No credit card. No account required.</p>
         <ul class="plan-features">
           <li>URL shortening</li>
           <li>File sharing</li>
-          <li>10 clicks per link</li>
-          <li>Links expire after 30 days</li>
+          <li>10 successful uses per link</li>
+          <li>No calendar expiry (fair use)</li>
         </ul>
-        <button class="plan-cta">Get started free</button>
+        <button type="button" class="plan-cta" id="plan-cta-free">Get started free →</button>
       </div>
-      <div class="plan pro">
+      <div class="plan paid monthly">
         <p class="plan-label">Pro</p>
-        <div class="plan-price">$4.99 <span>/ mo</span></div>
-        <p class="plan-tagline">Cheaper than a cup of coffee.</p>
+        <div class="plan-price">
+          <span class="price-was" aria-hidden="true">$9.99</span>
+          <span class="price-value price-value--accent">$4.99</span>
+          <span class="price-period">/ mo</span>
+        </div>
+        <p class="plan-tagline">Unlimited uses while subscribed. Cancel anytime.</p>
         <ul class="plan-features">
-          <li>URL shortening</li>
-          <li>File sharing</li>
-          <li>Unlimited clicks</li>
-          <li>Links never expire</li>
-          <li>Click analytics</li>
-          <li>Priority support</li>
+          <li>Everything in Free</li>
+          <li>Unlimited successful uses per link</li>
+          <li>Billed monthly via Stripe</li>
         </ul>
-        <button class="plan-cta btn-primary">Upgrade to Pro →</button>
+        <button type="button" class="plan-cta btn-primary" id="plan-cta-monthly">Subscribe →</button>
+      </div>
+      <div class="plan paid lifetime">
+        <p class="plan-label">Lifetime</p>
+        <div class="plan-price">
+          <span class="price-was" aria-hidden="true">$100</span>
+          <span class="price-value">$75</span>
+          <span class="price-once">once</span>
+        </div>
+        <p class="plan-tagline">Pay once, own forever on your account.</p>
+        <ul class="plan-features">
+          <li>Everything in Free</li>
+          <li>Unlimited successful uses per link</li>
+          <li>No recurring charges</li>
+        </ul>
+        <button type="button" class="plan-cta" id="plan-cta-lifetime">Get lifetime access →</button>
       </div>
     </div>
   </section>
@@ -202,16 +226,31 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     </div>
     <div class="faq-list">
       <details class="faq-item">
-        <summary>How many clicks does a free link get?</summary>
-        <p>Free links are limited to <strong>10 clicks</strong>. Once the limit is reached, the link deactivates. Upgrade to Pro for unlimited clicks on every link you create.</p>
+        <summary>How many uses does a free link get?</summary>
+        <p>Free links are limited to <strong>10 successful uses</strong> per link. After that, the link stops working. <strong>Pro</strong> (monthly) or <strong>Lifetime</strong> unlocks unlimited uses for links you create while your plan is active.</p>
       </details>
       <details class="faq-item">
         <summary>How long do links stay active?</summary>
-        <p>Free links expire after <strong>30 days</strong> from creation. Pro links never expire — they stay active as long as your account does.</p>
+        <p>
+          We do not enforce a fixed calendar expiry today. Free and anonymous links are capped at
+          <strong>10 successful uses</strong> per link (redirects for URLs, completed downloads for files). Pro and Lifetime
+          remove that cap for links you create while your plan is active.
+        </p>
       </details>
       <details class="faq-item">
         <summary>Do I need an account to use thelnk.is?</summary>
-        <p>No account needed for free use. Just paste a URL or drop a file and go. Sign up only if you want Pro features like unlimited clicks and permanent links.</p>
+        <p>
+          No account needed for free use. Sign in with Clerk to subscribe to Pro or buy Lifetime — checkout must be tied to an
+          account so we can upgrade the right profile.
+        </p>
+      </details>
+      <details class="faq-item">
+        <summary>What is the difference between Pro monthly and Lifetime?</summary>
+        <p>
+          <strong>Pro monthly</strong> is a recurring subscription through Stripe — unlimited per-link uses while your
+          subscription is active; cancel anytime. <strong>Lifetime</strong> is a single payment for the same unlimited
+          benefit without a monthly bill, for the operational lifetime of the service (see Terms).
+        </p>
       </details>
       <details class="faq-item">
         <summary>What file types can I share?</summary>
@@ -223,6 +262,11 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
 </BaseLayout>
 
 <script>
+  await new Promise<void>(resolve => {
+    if (document.readyState !== 'loading') resolve();
+    else document.addEventListener('DOMContentLoaded', () => resolve(), { once: true });
+  });
+
   // Tabs
   const segBtns = document.querySelectorAll<HTMLButtonElement>('.seg-btn');
   const panelUrl = document.getElementById('panel-url')!;
@@ -242,26 +286,38 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   const CHECK_ICON = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
   const COPY_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
 
+  function shortUrlForDisplay(full: string): string {
+    return full.replace(/^https?:\/\//i, '');
+  }
+
   function showResult(wrapper: HTMLElement, text: string, isErr: boolean) {
     const inner = wrapper.querySelector<HTMLElement>('.result-box');
+    const row = wrapper.querySelector<HTMLElement>('.result-row');
     const u = wrapper.querySelector<HTMLAnchorElement>('.result-url');
     const c = wrapper.querySelector<HTMLElement>('.copy-btn');
-    if (u) { u.textContent = text; u.href = isErr ? '#' : text; }
+    if (u) {
+      u.href = isErr ? '#' : text;
+      u.textContent = isErr ? text : shortUrlForDisplay(text);
+    }
     if (c) c.style.display = isErr ? 'none' : '';
     if (inner) inner.classList.toggle('err', isErr);
-    // re-trigger highlight by toggling class
-    if (inner && !isErr) {
-      inner.classList.remove('highlighted');
-      inner.offsetHeight;
-      inner.classList.add('highlighted');
+    if (row) {
+      if (isErr) row.classList.remove('highlighted');
+      else {
+        row.classList.remove('highlighted');
+        row.offsetHeight;
+        row.classList.add('highlighted');
+      }
     }
     wrapper.classList.add('visible');
   }
 
   document.querySelectorAll('.copy-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const text = btn.closest('.result-box')?.querySelector('.result-url')?.textContent ?? '';
-      navigator.clipboard?.writeText(text).then(() => {
+      const link = btn.closest('.result-box')?.querySelector<HTMLAnchorElement>('.result-url');
+      const hrefAttr = link?.getAttribute('href') ?? '';
+      const toCopy = /^https?:\/\//i.test(hrefAttr) ? hrefAttr : (link?.textContent ?? '');
+      navigator.clipboard?.writeText(toCopy).then(() => {
         btn.innerHTML = CHECK_ICON;
         (btn as HTMLElement).style.color = '#4ade80';
         (btn as HTMLElement).style.borderColor = 'rgba(74,222,128,0.4)';
@@ -276,39 +332,87 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     });
   });
 
-  // URL shortener
-  const formUrl = document.getElementById('form-url') as HTMLFormElement;
-  const outUrl = document.getElementById('out-url')!;
-  const btnUrl = document.getElementById('btn-url') as HTMLButtonElement;
-
-  formUrl?.addEventListener('submit', async e => {
-    e.preventDefault();
-    outUrl.classList.remove('visible');
-    const targetUrl = String(new FormData(formUrl).get('targetUrl') ?? '');
-    const orig = btnUrl.innerHTML;
-    btnUrl.disabled = true;
-    btnUrl.textContent = 'Shortening…';
-    try {
-      const res = await fetch('/api/links/url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUrl }),
-      });
-      const data = (await res.json().catch(() => ({}))) as {
-        shortUrl?: string; error?: string; detail?: string; reason?: string;
-      };
-      if (!res.ok) {
-        const base = data.error ?? res.statusText;
-        const bits = [data.reason, data.detail].filter(Boolean);
-        showResult(outUrl, bits.length ? `${base} — ${bits.join(' — ')}` : base, true);
-      } else {
-        showResult(outUrl, data.shortUrl ?? 'Created', false);
-      }
-    } finally {
-      btnUrl.disabled = false;
-      btnUrl.innerHTML = orig;
-    }
+  document.getElementById('plan-cta-free')?.addEventListener('click', () => {
+    document.getElementById('hero')?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('targetUrl')?.focus();
   });
+
+  async function startCheckout(tier: 'monthly' | 'lifetime', btn: HTMLButtonElement) {
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      alert(data.error ?? `Checkout failed (${res.status})`);
+    } catch {
+      alert('Network error starting checkout');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('plan-cta-monthly')?.addEventListener('click', function (this: HTMLButtonElement) {
+    void startCheckout('monthly', this);
+  });
+  document.getElementById('plan-cta-lifetime')?.addEventListener('click', function (this: HTMLButtonElement) {
+    void startCheckout('lifetime', this);
+  });
+
+  // URL shortener
+  const formUrl = document.getElementById('form-url');
+  const outUrl = document.getElementById('out-url');
+  const btnUrl = document.getElementById('btn-url');
+
+  if (formUrl instanceof HTMLFormElement && outUrl && btnUrl instanceof HTMLButtonElement) {
+    formUrl.addEventListener('submit', async e => {
+      e.preventDefault();
+      outUrl.classList.remove('visible');
+      const targetUrlInput = formUrl.querySelector<HTMLInputElement>('#targetUrl');
+      const targetUrl = String(new FormData(formUrl).get('targetUrl') ?? '').trim();
+      if (!targetUrl) {
+        targetUrlInput?.focus();
+        return;
+      }
+
+      const orig = btnUrl.innerHTML;
+      btnUrl.disabled = true;
+      btnUrl.classList.add('is-loading');
+      btnUrl.setAttribute('aria-busy', 'true');
+      btnUrl.innerHTML =
+        '<span class="btn-url-spin" aria-hidden="true"></span><span class="btn-url-loading-text">Shortening…</span>';
+      await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+      try {
+        const res = await fetch('/api/links/url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetUrl }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          shortUrl?: string; error?: string; detail?: string; reason?: string;
+        };
+        if (!res.ok) {
+          const base = data.error ?? res.statusText;
+          const bits = [data.reason, data.detail].filter(Boolean);
+          showResult(outUrl, bits.length ? `${base} — ${bits.join(' — ')}` : base, true);
+        } else {
+          showResult(outUrl, data.shortUrl ?? 'Created', false);
+        }
+      } finally {
+        btnUrl.disabled = false;
+        btnUrl.classList.remove('is-loading');
+        btnUrl.removeAttribute('aria-busy');
+        btnUrl.innerHTML = orig;
+      }
+    });
+  }
 
   // File upload
   const fileInput = document.getElementById('file') as HTMLInputElement;
@@ -366,7 +470,10 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
         const base = done.error ?? doneRes.statusText;
         const bits = [done.reason, done.detail].filter(Boolean);
         showResult(outFile, bits.length ? `${base} — ${bits.join(' — ')}` : base, true);
-      } else { showResult(outFile, done.shortUrl ?? 'Created', false); setFile(null); }
+      } else {
+        setFile(null);
+        showResult(outFile, done.shortUrl ?? 'Created', false);
+      }
     } finally { btnFile.disabled = false; btnFile.innerHTML = orig; }
   });
 </script>
@@ -379,7 +486,7 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   .hero {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    align-items: start;
+    align-items: center;
   }
 
   .hero-copy {
@@ -481,7 +588,34 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     text-transform: uppercase;
   }
 
-  .file-upload-btn { margin-top: 0.5rem; }
+  #btn-url.is-loading {
+    pointer-events: none;
+  }
+  #btn-url.is-loading:disabled,
+  #btn-url.is-loading:disabled:hover {
+    opacity: 1 !important;
+    cursor: wait;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0a0a0a;
+  }
+  #btn-url .btn-url-spin {
+    width: 1.05em;
+    height: 1.05em;
+    border: 2px solid rgba(0, 0, 0, 0.22);
+    border-top-color: #0a0a0a;
+    border-radius: 50%;
+    animation: btn-url-spin 0.65s linear infinite;
+    flex-shrink: 0;
+  }
+  #btn-url .btn-url-loading-text {
+    letter-spacing: 0.08em;
+  }
+
+  .file-upload-btn {
+    margin-top: 0;
+    width: 100%;
+  }
 
   /* Result */
   .result-wrapper {
@@ -492,20 +626,95 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   .result-wrapper.visible { grid-template-rows: 1fr; }
   .result-inner { overflow: hidden; }
 
-  @keyframes result-highlight {
-    0%   { background: rgba(255, 229, 0, 0.14); }
-    100% { background: transparent; }
+  @keyframes result-url-marker {
+    0% {
+      transform: scaleX(0);
+      opacity: 1;
+    }
+    38% {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+    52% {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+    78%,
+    100% {
+      transform: scaleX(1);
+      opacity: 0;
+    }
+  }
+
+  @keyframes result-url-reveal {
+    0%,
+    36% {
+      color: #0a0a0a;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    48%,
+    100% {
+      color: var(--accent);
+      font-size: 1.28rem;
+      font-weight: 600;
+    }
+  }
+
+  @keyframes result-copy-reveal {
+    0%,
+    38% {
+      color: #0a0a0a;
+      border-color: rgba(10, 10, 10, 0.35);
+    }
+    50%,
+    100% {
+      color: var(--muted);
+      border-color: var(--border);
+    }
+  }
+
+  @keyframes btn-url-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .result-box {
     display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 0.75rem;
     padding: 1.25rem 0 0.25rem;
     border-top: 1px solid var(--border);
     margin-top: 1.25rem;
   }
-  .result-box.highlighted { animation: result-highlight 2.5s ease-out forwards; }
+
+  .result-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    max-width: 100%;
+  }
+
+  .result-box.err .result-row {
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .result-row.highlighted .result-url::before {
+    content: '';
+    position: absolute;
+    inset: 0.06em 0;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left center;
+    z-index: -1;
+    pointer-events: none;
+    animation: result-url-marker 2.2s ease-in-out forwards;
+  }
+
   .result-box.err {
     padding: 0.75rem;
     border: 1px solid rgba(255, 68, 68, 0.35);
@@ -515,7 +724,9 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   }
 
   .result-url {
-    flex: 1;
+    flex: 0 1 auto;
+    max-width: min(100%, 52rem);
+    display: inline-block;
     font-family: var(--mono);
     font-size: 1rem;
     font-weight: 500;
@@ -523,9 +734,26 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     text-decoration: none;
     word-break: break-all;
     min-width: 0;
+    position: relative;
+    isolation: isolate;
+    z-index: 0;
+    text-align: center;
+    vertical-align: middle;
+    transition: color 0.15s, font-size 0.15s;
+  }
+  .result-box.err .result-url {
+    flex: 1;
+    max-width: none;
+    text-align: left;
+    font-size: 0.82rem;
+    font-weight: 400;
+    color: var(--danger);
+  }
+  .result-row.highlighted .result-url {
+    animation: result-url-reveal 2.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    transition: none;
   }
   .result-url:hover { text-decoration: underline; }
-  .result-box.err .result-url { font-size: 0.82rem; font-weight: 400; color: var(--danger); }
 
   .copy-btn {
     flex-shrink: 0;
@@ -540,6 +768,11 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     color: var(--muted);
     cursor: pointer;
     transition: border-color 0.1s, color 0.1s, background 0.1s;
+    position: relative;
+    z-index: 1;
+  }
+  .result-row.highlighted .copy-btn {
+    animation: result-copy-reveal 2.2s ease forwards;
   }
   .copy-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(255,229,0,0.06); }
 
@@ -579,10 +812,21 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   /* File ready */
   .file-ready {
     display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--border);
+  }
+  .file-ready-meta {
+    display: flex;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.65rem 0.85rem;
-    border: 1px solid var(--border);
+    min-width: 0;
+  }
+  .file-ready-icon {
+    flex-shrink: 0;
+    color: var(--muted);
+    opacity: 0.65;
   }
   .file-name-text {
     flex: 1;
@@ -680,32 +924,75 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   }
   .pricing-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    max-width: 780px;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: stretch;
+    max-width: 1080px;
     border: 1px solid var(--border);
   }
-  .plan { padding: 2.5rem; }
-  .plan.pro {
-    border-left: 1px solid var(--border);
+  .plan {
+    padding: 2rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+  .pricing-grid .plan {
     background: var(--surface);
+  }
+  .pricing-grid .plan:not(:first-child) {
+    border-left: 1px solid var(--border);
   }
   .plan-label {
     font-family: var(--mono);
     font-size: 0.68rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--accent);
     margin: 0 0 1rem;
   }
-  .plan.pro .plan-label { color: var(--accent); }
   .plan-price {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.35rem 0.55rem;
+    margin: 0 0 0.35rem;
+    min-height: 3.35rem;
+    box-sizing: content-box;
+  }
+  .price-value {
     font-family: var(--serif);
     font-size: 3rem;
     font-weight: 700;
     line-height: 1;
-    margin-bottom: 0.35rem;
+    color: var(--text);
   }
-  .plan-price span { font-family: var(--mono); font-size: 0.85rem; font-weight: 400; color: var(--muted); }
+  .price-value--accent {
+    color: var(--accent);
+  }
+  .price-period {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .price-was {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+  .plan.lifetime .price-was {
+    color: var(--text);
+  }
+  .price-once {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
   .plan-tagline {
     font-family: var(--mono);
     font-size: 0.72rem;
@@ -714,8 +1001,10 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   }
   .plan-features {
     list-style: none;
-    padding: 0;
-    margin: 0 0 2rem;
+    padding: 0 0 2rem;
+    margin: 0;
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
@@ -728,16 +1017,53 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     align-items: center;
     gap: 0.6rem;
   }
-  .plan-features li::before { content: '—'; color: var(--muted); flex-shrink: 0; }
-  .plan.pro .plan-features li::before { content: '✓'; color: var(--accent); }
-  .plan-cta {
+  .plan-features li::before {
+    content: '✓';
+    color: var(--accent);
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    line-height: 1;
+  }
+  .pricing .plan-cta {
     width: 100%;
+    margin-top: auto;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
     justify-content: center;
-    padding: 0.75rem 1.25rem;
-    font-size: 0.78rem;
+    min-height: 2.75rem;
+    padding: 0.65rem 1rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
+    line-height: 1;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .pricing .plan-cta:hover {
+    background: rgba(255, 229, 0, 0.1);
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .pricing .plan-cta.btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    padding: 0.65rem 1rem;
+  }
+  .pricing .plan-cta.btn-primary:hover {
+    background: #fff176;
+    border-color: #fff176;
+    color: #000;
+  }
+  .pricing .plan-cta:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   /* ── FAQ ── */
@@ -799,7 +1125,10 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     .tool-card { padding: 2rem 1.5rem; }
     .pricing { padding: 3rem 1.5rem; }
     .pricing-grid { grid-template-columns: 1fr; }
-    .plan.pro { border-left: none; border-top: 1px solid var(--border); }
+    .pricing-grid .plan:not(:first-child) {
+      border-left: none;
+      border-top: 1px solid var(--border);
+    }
     .faq { padding: 3rem 1.5rem; }
   }
 </style>

@@ -1,0 +1,97 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/components';
+---
+
+<BaseLayout title="Terms · thelnk" description="Terms of use for thelnk.is.">
+  <div slot="auth" class="auth-slot">
+    <Show when="signed-in">
+      <UserButton />
+    </Show>
+    <Show when="signed-out">
+      <span class="auth-login-wrap"><SignInButton mode="modal" /></span>
+      <span class="auth-upgrade-wrap"><SignUpButton mode="modal" /></span>
+    </Show>
+  </div>
+
+  <article class="legal">
+    <h1>Terms of use</h1>
+    <p class="lead">Last updated: May 2026</p>
+
+    <h2>The service</h2>
+    <p>
+      thelnk.is provides URL shortening and temporary file sharing. The service is offered as-is. We may change,
+      limit, or discontinue features with reasonable notice where practicable.
+    </p>
+
+    <h2>Acceptable use</h2>
+    <p>
+      You may not use the service to distribute malware, conduct phishing, harass others, violate applicable law, or
+      infringe intellectual property. We may suspend links or accounts that abuse the service or threaten its
+      stability.
+    </p>
+
+    <h2>Free and anonymous links</h2>
+    <p>
+      Links created without signing in are subject to per-link use limits described on the homepage. We do not
+      guarantee indefinite availability of any specific link.
+    </p>
+
+    <h2>Subscriptions</h2>
+    <p>
+      <strong>Pro monthly</strong> is billed through Stripe until you cancel in the Stripe customer flow (or your payment method fails and the subscription ends). When the subscription is no longer active, your account returns to the free tier limits described on the homepage.
+    </p>
+
+    <h2>Lifetime license</h2>
+    <p>
+      A one-time purchase grants the account linked at checkout access to paid-tier limits described on the homepage
+      (for example unlimited successful uses per link you create while your account remains in good standing). “Lifetime”
+      means for the operational lifetime of the service, not a literal eternity. If we wind down the product, we will
+      make reasonable efforts to give notice and a data export window where feasible.
+    </p>
+
+    <h2>Refunds</h2>
+    <p>
+      Digital access is delivered immediately after successful payment. Refunds are handled case-by-case; contact
+      support within 14 days of purchase if you believe you were charged in error.
+    </p>
+
+    <h2>Disclaimer</h2>
+    <p>
+      To the maximum extent permitted by law, the service is provided without warranties of any kind. We are not
+      liable for indirect or consequential damages arising from use of the service.
+    </p>
+
+    <p><a href="/">← Home</a></p>
+  </article>
+</BaseLayout>
+
+<style>
+  .auth-slot { display: flex; align-items: center; gap: 0.5rem; }
+  .legal {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.75;
+    color: var(--muted);
+  }
+  .legal h1 {
+    font-family: var(--serif);
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    color: var(--text);
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+  }
+  .legal .lead { margin: 0 0 2rem; color: var(--muted); }
+  .legal h2 {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text);
+    margin: 2rem 0 0.75rem;
+  }
+  .legal p { margin: 0 0 1rem; }
+  .legal a { color: var(--accent); }
+</style>

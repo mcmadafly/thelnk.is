@@ -1,0 +1,19 @@
+---
+description: Deploy the web app to Cloudflare Workers when asked or after shipping web changes
+alwaysApply: true
+---
+
+# Deploy (thelnk-web)
+
+- **Production deploy** is allowed: run it when the user asks to deploy, release, or ship to production, or when they clearly want the live site updated after changes under `apps/web/`.
+- **Command** — always run a **fresh production build** before Wrangler, or the live site can keep serving an old Worker / assets (`wrangler deploy` alone is not enough for this Astro SSR app).
+
+  ```bash
+  cd apps/web && bun run deploy
+  ```
+
+  (`deploy` = `astro build && wrangler deploy` in `apps/web/package.json`.)
+
+- **Worker name:** `thelnk-web` (Astro on Cloudflare). Do not assume Vercel unless the user says otherwise. **GitHub Actions** also deploys on **push to `main`** (see [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml)); local `bun run deploy` is still valid for manual / emergency releases.
+- **Git:** Push to `main` when the user wants remote updated; deploy is separate unless they only asked for push. Follow the user’s commit rules (only commit when they ask).
+- **Secrets:** Never put API keys or `.env` / `.dev.vars` contents in commits or in the rule file. Wrangler uses existing account login and Cloudflare secrets already configured for the project.

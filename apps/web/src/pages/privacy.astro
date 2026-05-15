@@ -1,0 +1,83 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/components';
+---
+
+<BaseLayout title="Privacy · thelnk" description="How thelnk.is handles your data.">
+  <div slot="auth" class="auth-slot">
+    <Show when="signed-in">
+      <UserButton />
+    </Show>
+    <Show when="signed-out">
+      <span class="auth-login-wrap"><SignInButton mode="modal" /></span>
+      <span class="auth-upgrade-wrap"><SignUpButton mode="modal" /></span>
+    </Show>
+  </div>
+
+  <article class="legal">
+    <h1>Privacy</h1>
+    <p class="lead">Last updated: May 2026</p>
+
+    <h2>What we collect</h2>
+    <p>
+      When you shorten a URL or upload a file, we store the metadata needed to operate the service (for example
+      destination URL, file name, size, MIME type, and timestamps) in our database. Short links and file links are
+      associated with your Clerk account when you are signed in, or stored without an account when you use the site
+      anonymously.
+    </p>
+
+    <h2>Authentication</h2>
+    <p>
+      Sign-in and account management are provided by <a href="https://clerk.com/">Clerk</a>. Clerk’s privacy policy
+      governs the data they process on our behalf for authentication.
+    </p>
+
+    <h2>Payments</h2>
+    <p>
+      If you purchase a <strong>lifetime</strong> license or subscribe to <strong>Pro monthly</strong>, payment processing is handled by <a href="https://stripe.com/">Stripe</a>.
+      We do not store your full card number on our servers. Stripe’s privacy policy applies to payment data they
+      collect.
+    </p>
+
+    <h2>Hosting and logs</h2>
+    <p>
+      The service runs on <a href="https://www.cloudflare.com/">Cloudflare</a> (Workers, D1, R2, and related
+      products). Cloudflare may process IP addresses and technical data as part of delivering and securing the site.
+    </p>
+
+    <h2>Contact</h2>
+    <p>For privacy questions, contact the operator of thelnk.is at the support channel you were given at purchase.</p>
+
+    <p><a href="/">← Home</a></p>
+  </article>
+</BaseLayout>
+
+<style>
+  .auth-slot { display: flex; align-items: center; gap: 0.5rem; }
+  .legal {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.75;
+    color: var(--muted);
+  }
+  .legal h1 {
+    font-family: var(--serif);
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    color: var(--text);
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+  }
+  .legal .lead { margin: 0 0 2rem; color: var(--muted); }
+  .legal h2 {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text);
+    margin: 2rem 0 0.75rem;
+  }
+  .legal p { margin: 0 0 1rem; }
+  .legal a { color: var(--accent); }
+</style>

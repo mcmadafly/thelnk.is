@@ -14,6 +14,10 @@ declare namespace Cloudflare {
 		R2_ACCESS_KEY_ID: string;
 		R2_SECRET_ACCESS_KEY: string;
 		R2_BUCKET_NAME: string;
+		STRIPE_SECRET_KEY?: string;
+		STRIPE_WEBHOOK_SECRET?: string;
+		STRIPE_LIFETIME_PRICE_ID?: string;
+		STRIPE_MONTHLY_PRICE_ID?: string;
 	}
 }
 interface Env extends Cloudflare.Env {}
@@ -21,5 +25,5 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "PUBLIC_APP_ORIGIN" | "PUBLIC_SHORT_ORIGIN" | "PUBLIC_CLERK_PUBLISHABLE_KEY" | "CLERK_SECRET_KEY" | "R2_ACCOUNT_ID" | "R2_ACCESS_KEY_ID" | "R2_SECRET_ACCESS_KEY" | "R2_BUCKET_NAME">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "PUBLIC_APP_ORIGIN" | "PUBLIC_SHORT_ORIGIN" | "PUBLIC_CLERK_PUBLISHABLE_KEY" | "CLERK_SECRET_KEY" | "R2_ACCOUNT_ID" | "R2_ACCESS_KEY_ID" | "R2_SECRET_ACCESS_KEY" | "R2_BUCKET_NAME" | "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET" | "STRIPE_LIFETIME_PRICE_ID" | "STRIPE_MONTHLY_PRICE_ID">> {}
 }
