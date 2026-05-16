@@ -1,0 +1,11 @@
+---
+description: Prefer terse replies; avoid long preambles and repetition.
+alwaysApply: true
+---
+
+# Short answers
+
+- Default to **brief** answers: lead with the conclusion, then only what’s needed (steps, caveats, one link).
+- Skip filler, long intros, and restating the question unless ambiguity requires it.
+- Use bullets over paragraphs when listing options or steps.
+- For code changes, a **short** summary + pointer to files is enough unless the user asks for depth.

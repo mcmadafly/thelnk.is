@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-05-16T17:58:02.687Z",
+  "featured": [
+    {
+      "slug": "itm6usZ",
+      "shortUrl": "https://thelnk.is/itm6usZ",
+      "hostname": "framer.com",
+      "title": "framer.com",
+      "previewUrl": "/api/preview/itm6usZ?v=desktop",
+      "useCount": 2,
+      "lastUsedAt": 1778953452,
+      "linkCount": 17
+    },
+    {
+      "slug": "nsu8r8L",
+      "shortUrl": "https://thelnk.is/nsu8r8L",
+      "hostname": "raygun.com",
+      "title": "raygun.com",
+      "previewUrl": "/api/preview/nsu8r8L?v=desktop",
+      "useCount": 5,
+      "lastUsedAt": 1778954039,
+      "linkCount": 11
+    }
+  ],
+  "more": [
+    {
+      "slug": "Wxn2qub",
+      "shortUrl": "https://thelnk.is/Wxn2qub",
+      "hostname": "github.com",
+      "title": "github.com",
+      "previewUrl": "/api/preview/Wxn2qub?v=desktop",
+      "useCount": 5,
+      "lastUsedAt": 1778950178,
+      "linkCount": 6
+    },
+    {
+      "slug": "eMN8uJ7",
+      "shortUrl": "https://thelnk.is/eMN8uJ7",
+      "hostname": "news.ycombinator.com",
+      "title": "news.ycombinator.com",
+      "previewUrl": "/api/preview/eMN8uJ7?v=desktop",
+      "useCount": 10,
+      "lastUsedAt": 1778896006,
+      "linkCount": 6
+    },
+    {
+      "slug": "dDcYgnC",
+      "shortUrl": "https://thelnk.is/dDcYgnC",
+      "hostname": "saaspo.com",
+      "title": "saaspo.com",
+      "previewUrl": "/api/preview/dDcYgnC?v=desktop",
+      "useCount": 1,
+      "lastUsedAt": 1778952430,
+      "linkCount": 5
+    }
+  ]
+}

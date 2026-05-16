@@ -1,0 +1,18 @@
+---
+description: Always run Astro TypeScript check (lint-equivalent) for apps/web after changes or when validating
+alwaysApply: true
+---
+
+# TypeScript check (thelnk-web)
+
+- **No ESLint** is configured in this repo. **`astro check`** is the TypeScript + Astro template checker (strict types, `.astro` scripts, etc.).
+- **After meaningful edits** under `apps/web/` (or when the user asks to lint, typecheck, or verify TS), run:
+
+  ```bash
+  cd apps/web && bun run check
+  ```
+
+  From repo root: `bun run check:web` (same script).
+
+- **If `check` fails**, fix the reported errors before treating the task as done; do not silence real errors without fixing or an explicit user-approved exception.
+- **Do not** add secrets, `.env`, or `.dev.vars` contents to commits or rules.

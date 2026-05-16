@@ -1,4 +1,8 @@
 {
+	// D1 `remote: true`: `astro dev` uses production D1 via Vite `remoteBindings` (needs `wrangler login`).
+	// `astro build` sets `remoteBindings: false` in `astro.config.mjs` so deploy/CI avoid edge-preview auth.
+	// R2 stays local in Miniflare unless you use full remote dev — so dev-created previews can leave a D1 key with no prod R2 object; `/api/preview` self-heals by re-capturing when the object is missing.
+	// Caution: `wrangler d1 migrations apply` affects this database — confirm flags/env before running migrations locally.
 	"compatibility_date": "2026-05-12",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"name": "thelnk-web",
@@ -15,7 +19,8 @@
 			"binding": "DB",
 			"database_name": "thelnk",
 			"database_id": "23bf7d86-e447-4fc3-8f64-3881ae393649",
-			"migrations_dir": "migrations"
+			"migrations_dir": "migrations",
+			"remote": true
 		}
 	],
 	"kv_namespaces": [
@@ -34,6 +39,8 @@
 		"R2_ACCOUNT_ID": "9acf5bdc7c2c3d46f02c207c438bc7a0",
 		"R2_BUCKET_NAME": "thelnk",
 		"PUBLIC_APP_ORIGIN": "https://thelnk.is",
-		"PUBLIC_SHORT_ORIGIN": "https://thelnk.is"
+		"PUBLIC_SHORT_ORIGIN": "https://thelnk.is",
+		"FORCE_PRO": "false",
+		"PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_Y3VkZGx5LXB1cC05OS5jbGVyay5hY2NvdW50cy5kZXYk"
 	}
 }

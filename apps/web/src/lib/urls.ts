@@ -1,5 +1,8 @@
 import tlds from 'tlds';
 
+/** Stored redirect targets; keeps D1 rows and logs bounded. */
+const MAX_TARGET_URL_LENGTH = 4096;
+
 /** Lowercase IANA TLD labels (ASCII + punycode A-labels), from the `tlds` package. */
 const KNOWN_TLDS = new Set(tlds.map((x) => x.toLowerCase()));
 
@@ -38,5 +41,11 @@ export function normalizeHttpUrl(input: string): string | null {
 
   if (!hostnameHasKnownTld(u.hostname)) return null;
 
-  return u.toString();
+  // Embedded credentials are a phishing / secret-leak vector; outbound redirects should not carry them.
+  if (u.username !== '' || u.password !== '') return null;
+
+  const out = u.toString();
+  if (out.length > MAX_TARGET_URL_LENGTH) return null;
+
+  return out;
 }

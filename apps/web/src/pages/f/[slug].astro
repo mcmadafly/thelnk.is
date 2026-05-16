@@ -1,10 +1,17 @@
 ---
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { canonicalSlugForPath } from '../../lib/resolve-link-slug';
+import { isValidSlug } from '../../lib/slug';
 
 export const prerender = false;
 
-const slug = Astro.params.slug;
+const raw = Astro.params.slug;
+if (!raw || !isValidSlug(raw)) {
+  return Astro.redirect('/', 302);
+}
+
+const slug = await canonicalSlugForPath(env.DB, raw);
 if (!slug) {
   return Astro.redirect('/', 302);
 }
@@ -23,7 +30,7 @@ const row = await env.DB.prepare(
     max_uses: number;
   }>();
 
-if (!row || row.type !== 'file') {
+if (!row || String(row.type ?? '').toLowerCase() !== 'file') {
   return Astro.redirect('/', 302);
 }
 

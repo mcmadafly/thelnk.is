@@ -1,19 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/components';
 ---
 
 <BaseLayout title="Privacy · thelnk" description="How thelnk.is handles your data.">
-  <div slot="auth" class="auth-slot">
-    <Show when="signed-in">
-      <UserButton />
-    </Show>
-    <Show when="signed-out">
-      <span class="auth-login-wrap"><SignInButton mode="modal" /></span>
-      <span class="auth-upgrade-wrap"><SignUpButton mode="modal" /></span>
-    </Show>
-  </div>
-
   <article class="legal">
     <h1>Privacy</h1>
     <p class="lead">Last updated: May 2026</p>
@@ -53,7 +42,6 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
 </BaseLayout>
 
 <style>
-  .auth-slot { display: flex; align-items: center; gap: 0.5rem; }
   .legal {
     max-width: 40rem;
     margin: 0 auto;

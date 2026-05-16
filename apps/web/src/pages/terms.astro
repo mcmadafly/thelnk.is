@@ -1,19 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/components';
 ---
 
 <BaseLayout title="Terms · thelnk" description="Terms of use for thelnk.is.">
-  <div slot="auth" class="auth-slot">
-    <Show when="signed-in">
-      <UserButton />
-    </Show>
-    <Show when="signed-out">
-      <span class="auth-login-wrap"><SignInButton mode="modal" /></span>
-      <span class="auth-upgrade-wrap"><SignUpButton mode="modal" /></span>
-    </Show>
-  </div>
-
   <article class="legal">
     <h1>Terms of use</h1>
     <p class="lead">Last updated: May 2026</p>
@@ -37,6 +26,24 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
       guarantee indefinite availability of any specific link.
     </p>
 
+    <h2>Uploaded files and promotional use</h2>
+    <p>
+      If you use the service on a <strong>free or anonymous account</strong> (including when you are signed in but do
+      not have an active Pro or Lifetime entitlement), you agree that by uploading files you <strong>opt in</strong> to
+      thelnk.is using those files for public use, display, or distribution in any manner we reasonably choose in
+      connection with operating, improving, or promoting the service (for example marketing materials, demos, social
+      posts, or editorial features), without owing you compensation or providing further notice for such uses. You
+      represent that you have all rights necessary to grant this permission for content you upload.
+    </p>
+    <p>
+      <strong>Pro and Lifetime subscribers</strong> are entitled to exclude their uploads from discretionary
+      promotional use as described above. You may do so by signing in and enabling <strong>account privacy</strong> in
+      your account settings. While account privacy is on and your paid entitlement is active, we will not use files you
+      upload under that account for discretionary public promotion in the manner described for free users. Core
+      operation of the service (for example storing and serving files to people you share links with) is not
+      “promotion” for purposes of this section.
+    </p>
+
     <h2>Subscriptions</h2>
     <p>
       <strong>Pro monthly</strong> is billed through Stripe until you cancel in the Stripe customer flow (or your payment method fails and the subscription ends). When the subscription is no longer active, your account returns to the free tier limits described on the homepage.
@@ -56,6 +63,15 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
       support within 14 days of purchase if you believe you were charged in error.
     </p>
 
+    <h2>Changes to pricing, features, and limits</h2>
+    <p>
+      We reserve the right to adjust <strong>pricing</strong>, <strong>features</strong>, and <strong>limits</strong>
+      (including upload size caps, per-link use allowances, storage or retention periods, and other quotas) whenever we
+      consider it appropriate to operate, improve, or sustain the service. Homepage and marketing descriptions are
+      guidance and may be updated. Where a change would materially affect existing paying subscribers, we will make
+      reasonable efforts to provide advance notice when practicable, consistent with law and payment-provider rules.
+    </p>
+
     <h2>Disclaimer</h2>
     <p>
       To the maximum extent permitted by law, the service is provided without warranties of any kind. We are not
@@ -67,7 +83,6 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
 </BaseLayout>
 
 <style>
-  .auth-slot { display: flex; align-items: center; gap: 0.5rem; }
   .legal {
     max-width: 40rem;
     margin: 0 auto;

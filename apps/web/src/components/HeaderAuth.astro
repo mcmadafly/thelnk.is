@@ -1,0 +1,14 @@
+---
+import { Show, SignInButton, UserButton } from '@clerk/astro/components';
+---
+
+<div class="auth-slot">
+  <Show when="signed-in">
+    <UserButton />
+  </Show>
+  <Show when="signed-out">
+    <span class="auth-login-wrap">
+      <SignInButton mode="modal">Sign in</SignInButton>
+    </span>
+  </Show>
+</div>
