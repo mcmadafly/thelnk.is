@@ -2,8 +2,6 @@ import bundledWallOfFame from '../data/wall-of-fame.json';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const WALL_OF_FAME_JSON_PATH = fileURLToPath(new URL('../data/wall-of-fame.json', import.meta.url));
-
 const EMPTY_WALL_OF_FAME: WallOfFameData = {
   generatedAt: '1970-01-01T00:00:00.000Z',
   featured: [],
@@ -43,7 +41,8 @@ export function isWallOfFameData(value: unknown): value is WallOfFameData {
 export function loadWallOfFameData(): WallOfFameData {
   if (import.meta.env.DEV) {
     try {
-      const raw: unknown = JSON.parse(readFileSync(WALL_OF_FAME_JSON_PATH, 'utf8'));
+      const jsonPath = fileURLToPath(new URL('../data/wall-of-fame.json', import.meta.url));
+      const raw: unknown = JSON.parse(readFileSync(jsonPath, 'utf8'));
       if (isWallOfFameData(raw)) return raw;
     } catch {
       /* fall through */
