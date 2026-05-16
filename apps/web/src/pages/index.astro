@@ -451,7 +451,7 @@ const faqProUploadLimit = formatUploadLimitHuman(MAX_UPLOAD_BYTES_PREMIUM);
   if (formUrl instanceof HTMLFormElement && outUrl && btnUrl instanceof HTMLButtonElement) {
     const urlBtn = btnUrl;
     const URL_DEFAULT_BTN_HTML = urlBtn.innerHTML;
-    const URL_WAIT_TEXT = 'please wait a while before ...';
+    const URL_WAIT_TEXT = 'please wait before creating a new lnk';
     const targetUrlInput = formUrl.querySelector<HTMLInputElement>('#targetUrl');
     const URL_SUBMIT_BACKOFF_BASE_MS = 1000;
     const URL_SUBMIT_BACKOFF_MAX_MS = 30000;
@@ -467,6 +467,7 @@ const faqProUploadLimit = formatUploadLimitHuman(MAX_UPLOAD_BYTES_PREMIUM);
       const remaining = urlSubmitCooldownUntil - Date.now();
       if (remaining <= 0) return;
       cooldownTimer = window.setTimeout(() => {
+        urlNeedsFreshInput = false;
         refreshUrlSubmitState();
       }, remaining + 5);
     }
