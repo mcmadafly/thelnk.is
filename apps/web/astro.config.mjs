@@ -3,16 +3,13 @@ import { defineConfig } from 'astro/config';
 import clerk from '@clerk/astro';
 import cloudflare from '@astrojs/cloudflare';
 
-/** Production D1 in `astro dev` (Wrangler `remote: true`). Off for `astro build` so deploy/CI skip edge-preview auth. */
-const remoteBindings = process.argv.includes('dev');
-
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
   site: 'https://thelnk.is',
   integrations: [clerk({ enableEnvSchema: false })],
   adapter: cloudflare({
-    remoteBindings,
+    remoteBindings: false,
   }),
   vite: {
     optimizeDeps: {
