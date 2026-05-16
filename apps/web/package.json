@@ -17,7 +17,7 @@
     "astro": "astro",
     "generate-types": "wrangler types --include-runtime=false",
     "wall-of-fame:build": "bun run ../../scripts/build-wall-of-fame.ts",
-    "wall-of-fame:refresh-previews": "bun run ../../scripts/refresh-wall-previews.ts"
+    "wall-of-fame:previews": "bun run ../../scripts/refresh-wall-previews.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.5.0",
