@@ -148,6 +148,17 @@ function entryFromAgg(agg: HostAgg): WallOfFameEntry {
   return entry;
 }
 
+async function executeD1(sql: string): Promise<void> {
+  const proc = Bun.spawn(
+    ['bunx', 'wrangler', 'd1', 'execute', 'thelnk', '--remote', '--command', sql],
+    { cwd: WEB_ROOT, stdout: 'pipe', stderr: 'pipe' },
+  );
+  const [stderr, code] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
+  if (code !== 0) {
+    console.warn(`D1 execute warning (exit ${code}): ${stderr}`);
+  }
+}
+
 async function fetchRows(): Promise<D1Row[]> {
   const proc = Bun.spawn(
     ['bunx', 'wrangler', 'd1', 'execute', 'thelnk', '--remote', '--json', '--command', SQL],
@@ -191,6 +202,14 @@ async function main() {
     featured: entries.slice(0, FEATURED_COUNT),
     more: entries.slice(FEATURED_COUNT, FEATURED_COUNT + MORE_COUNT),
   };
+
+  // Ensure all wall-of-fame slugs are never view-limited.
+  const wofSlugs = [...data.featured, ...data.more].map((e) => e.slug);
+  if (wofSlugs.length > 0) {
+    const slugList = wofSlugs.map((s) => `'${s.replace(/'/g, "''")}'`).join(', ');
+    await executeD1(`UPDATE links SET max_uses = -1 WHERE slug IN (${slugList}) AND max_uses != -1`);
+    console.log(`  Promoted ${wofSlugs.length} slugs to max_uses = -1: ${wofSlugs.join(', ')}`);
+  }
 
   writeFileSync(OUT_PATH, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
   console.log(`Wrote ${OUT_PATH}`);
