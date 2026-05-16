@@ -1,5 +1,5 @@
 {
-	// D1 + R2 `remote: true`: `astro dev` uses production bindings via Vite `remoteBindings` (needs `wrangler login`).
+	// D1 + R2 `remote: true`: `astro dev` uses production bindings. Requires CLOUDFLARE_API_TOKEN in env (see apps/web/.env).
 	// `astro build` sets `remoteBindings: false` in `astro.config.mjs` so deploy/CI skip edge-preview auth.
 	// Caution: `wrangler d1 migrations apply` affects this database — confirm flags/env before running migrations locally.
 	"compatibility_date": "2026-05-12",
@@ -18,7 +18,8 @@
 			"binding": "DB",
 			"database_name": "thelnk",
 			"database_id": "23bf7d86-e447-4fc3-8f64-3881ae393649",
-			"migrations_dir": "migrations"
+			"migrations_dir": "migrations",
+			"remote": true
 		}
 	],
 	"kv_namespaces": [
@@ -30,7 +31,8 @@
 	"r2_buckets": [
 		{
 			"binding": "FILES",
-			"bucket_name": "thelnk"
+			"bucket_name": "thelnk",
+			"remote": true
 		}
 	],
 	"vars": {
