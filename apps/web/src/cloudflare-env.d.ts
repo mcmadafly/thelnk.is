@@ -5,5 +5,6 @@ declare namespace Cloudflare {
     R2_SECRET_ACCESS_KEY: string;
     CLERK_SECRET_KEY: string;
     PUBLIC_CLERK_PUBLISHABLE_KEY: string;
+    DISCORD_WEBHOOK_URL?: string;
   }
 }

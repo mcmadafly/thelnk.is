@@ -1,5 +1,7 @@
 ---
+import HeaderAuth from '../components/HeaderAuth.astro';
 import '../styles/global.css';
+import { effectiveIsPremiumClerkUser } from '../lib/plan';
 
 interface Props {
   title?: string;
@@ -8,6 +10,16 @@ interface Props {
 
 const { title = 'thelnk.is — Short links & file sharing', description = 'Shorten any URL and share any file instantly. No account required. Free forever.' } = Astro.props;
 const siteUrl = 'https://thelnk.is';
+
+let headerUserId: string | null = null;
+try {
+  headerUserId = (await Astro.locals.auth()).userId ?? null;
+} catch {
+  headerUserId = null;
+}
+const isProSubscriber = await effectiveIsPremiumClerkUser(headerUserId);
+const isSignedIn = headerUserId !== null;
+const proLinkLabel = isSignedIn ? 'Pro' : 'Go pro';
 ---
 
 <!doctype html>
@@ -48,21 +60,36 @@ const siteUrl = 'https://thelnk.is';
     })} />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" sizes="512x512" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
     <title>{title}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=optional"
       rel="stylesheet"
     />
   </head>
   <body>
     <div class="shell">
       <header class="top">
-        <a class="brand" href="/">THELNK.IS</a>
+        <a class="brand" href="/" aria-label="THELNK.IS home">
+          <span class="brand-lockup" aria-hidden="true">
+            <span class="brand-host">THELNK.IS/</span><span class="brand-rotator"><span>anything</span><span>you</span><span>want</span><span class="brand-rand"></span><span class="brand-rand"></span><span class="brand-rand"></span><span class="brand-rand"></span><span class="brand-rand"></span><span class="brand-rand"></span></span>
+          </span>
+        </a>
         <div class="auth">
-          <a class="auth-pro-link" href="/#pricing" title="Pro &amp; Lifetime pricing">Pro</a>
-          <slot name="auth" />
+          <slot name="auth">
+            <HeaderAuth />
+          </slot>
+          {isSignedIn && (
+            <a class="auth-dashboard-link" href="/dashboard" title="Manage your links">Dashboard</a>
+          )}
+          {isProSubscriber ? (
+            <span class="auth-pro-badge" title="Pro plan active">Pro</span>
+          ) : (
+            <a class="auth-pro-link" href="/#pricing" title="Pro &amp; Lifetime pricing">{proLinkLabel}</a>
+          )}
         </div>
       </header>
       <main class="main">
@@ -78,5 +105,18 @@ const siteUrl = 'https://thelnk.is';
         <span>SHORT LINKS &amp; FILE DROPS</span>
       </footer>
     </div>
+    <script is:inline>
+      (function () {
+        var alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+        var len = 7;
+        document.querySelectorAll('.brand-rand').forEach(function (el) {
+          var s = '';
+          for (var i = 0; i < len; i++) {
+            s += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+          }
+          el.textContent = s;
+        });
+      })();
+    </script>
   </body>
 </html>

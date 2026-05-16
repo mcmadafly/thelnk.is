@@ -1,11 +1,15 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { captureUrlPreviewToR2 } from '../../../lib/capture-url-preview';
+import { notifyDiscordLinkSaved } from '../../../lib/discord-webhook';
 import { devDetail } from '../../../lib/dev-detail';
 import { maxUsesForNewLink } from '../../../lib/plan';
 import { newSlugCandidate } from '../../../lib/slug';
 import { normalizeHttpUrl } from '../../../lib/urls';
 
 export const prerender = false;
+
+type LocalsCf = { cfContext?: { waitUntil: (p: Promise<unknown>) => void } };
 
 export const POST: APIRoute = async ({ request, locals }) => {
   let body: unknown;
@@ -55,7 +59,25 @@ export const POST: APIRoute = async ({ request, locals }) => {
         .bind(slug, normalized, clerkUserId, createdAt, maxUses)
         .run();
 
+      const job = captureUrlPreviewToR2(slug, normalized);
       const short = `${env.PUBLIC_SHORT_ORIGIN.replace(/\/+$/, '')}/${slug}`;
+      const discordJob = notifyDiscordLinkSaved({
+        type: 'url',
+        slug,
+        shortUrl: short,
+        clerkUserId,
+        targetUrl: normalized,
+      });
+      // Must call as `cfContext.waitUntil(p)` — extracting `waitUntil` loses `this` (illegal invocation).
+      const cfContext = (locals as LocalsCf).cfContext;
+      if (cfContext) {
+        cfContext.waitUntil(job);
+        cfContext.waitUntil(discordJob);
+      } else {
+        void job;
+        void discordJob;
+      }
+
       return Response.json({ slug, shortUrl: short, maxUses });
     } catch (e) {
       lastInsertError = e;

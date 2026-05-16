@@ -1,21 +1,16 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { MAX_UPLOAD_BYTES } from '../../../lib/constants';
+import { UPLOAD_FILE_SIZE_INVALID_MESSAGE, uploadFileTooLargeMessage } from '../../../lib/constants';
+import { notifyDiscordLinkSaved } from '../../../lib/discord-webhook';
 import { devDetail } from '../../../lib/dev-detail';
 import { r2HeadObjectSize } from '../../../lib/r2-presign';
-import { maxUsesForNewLink } from '../../../lib/plan';
+import { maxUploadLimitForClerkUser, maxUsesForNewLink } from '../../../lib/plan';
 import { newSlugCandidate } from '../../../lib/slug';
+import { isStagingObjectKey, safeFilename, sanitizeUploadContentType } from '../../../lib/uploads-sanitize';
 
 export const prerender = false;
 
-function safeFilename(name: string): string {
-  const base = name
-    .replace(/^.*[/\\]/, '')
-    .replace(/[\u0000-\u001f<>:"|?*\\]/g, '')
-    .trim()
-    .slice(0, 200);
-  return base || 'download.bin';
-}
+type LocalsCf = { cfContext?: { waitUntil: (p: Promise<unknown>) => void } };
 
 export const POST: APIRoute = async ({ request, locals }) => {
   let body: unknown;
@@ -29,20 +24,27 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return Response.json({ error: 'Invalid body' }, { status: 400 });
   }
 
+  const auth = await locals.auth();
+  const clerkUserId = auth.userId ?? null;
+  const { maxBytes, isPremium } = await maxUploadLimitForClerkUser(clerkUserId);
+
   const { r2Key, filename, contentType, size } = body as Record<string, unknown>;
   const key = String(r2Key ?? '');
-  const name = safeFilename(String(filename ?? ''));
-  const mime = String(contentType ?? '').trim().slice(0, 128);
+  const name = safeFilename(String(filename ?? ''), 'download.bin');
+  const mime = sanitizeUploadContentType(String(contentType ?? ''));
   const n = typeof size === 'number' ? size : Number(size);
 
-  if (!key.startsWith('obj/') || key.length > 512) {
+  if (!isStagingObjectKey(key)) {
     return Response.json({ error: 'Invalid r2Key' }, { status: 400 });
   }
   if (!mime) {
-    return Response.json({ error: 'contentType is required' }, { status: 400 });
+    return Response.json({ error: 'Invalid or disallowed contentType' }, { status: 400 });
   }
-  if (!Number.isFinite(n) || n <= 0 || n > MAX_UPLOAD_BYTES) {
-    return Response.json({ error: 'Invalid size' }, { status: 400 });
+  if (!Number.isFinite(n) || n <= 0) {
+    return Response.json({ error: UPLOAD_FILE_SIZE_INVALID_MESSAGE }, { status: 400 });
+  }
+  if (n > maxBytes) {
+    return Response.json({ error: uploadFileTooLargeMessage(maxBytes, isPremium) }, { status: 400 });
   }
   const sizeInt = Math.trunc(n);
 
@@ -68,12 +70,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
       { status: 503 },
     );
   }
+  if (storedSize > maxBytes) {
+    return Response.json({ error: uploadFileTooLargeMessage(maxBytes, isPremium) }, { status: 400 });
+  }
   if (storedSize !== sizeInt) {
     return Response.json({ error: 'Size mismatch with stored object' }, { status: 400 });
   }
 
-  const auth = await locals.auth();
-  const clerkUserId = auth.userId ?? null;
   const createdAt = Math.floor(Date.now() / 1000);
   let maxUses: number;
   try {
@@ -103,6 +106,21 @@ export const POST: APIRoute = async ({ request, locals }) => {
         .run();
 
       const short = `${env.PUBLIC_SHORT_ORIGIN.replace(/\/+$/, '')}/${slug}`;
+      const discordJob = notifyDiscordLinkSaved({
+        type: 'file',
+        slug,
+        shortUrl: short,
+        clerkUserId,
+        filename: name,
+        contentType: mime,
+        sizeBytes: sizeInt,
+      });
+      const cfContext = (locals as LocalsCf).cfContext;
+      if (cfContext) {
+        cfContext.waitUntil(discordJob);
+      } else {
+        void discordJob;
+      }
       return Response.json({ slug, shortUrl: short, maxUses });
     } catch (e) {
       lastInsertError = e;

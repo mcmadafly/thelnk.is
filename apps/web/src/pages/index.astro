@@ -1,19 +1,30 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/components';
+import LinksServedCounter from '../components/LinksServedCounter.astro';
+import WallOfFame from '../components/WallOfFame.astro';
+import { uploadFileTooLargeMessage, formatUploadLimitHuman, MAX_UPLOAD_BYTES_FREE, MAX_UPLOAD_BYTES_PREMIUM } from '../lib/constants';
+import { loadLinksServedCount } from '../lib/links-served';
+import { effectiveIsPremiumClerkUser, maxUploadLimitForClerkUser } from '../lib/plan';
+import { loadWallOfFameData } from '../lib/wall-of-fame';
+
+const wallOfFameData = loadWallOfFameData();
+const linksServedCount = await loadLinksServedCount();
+
+let clerkUserId: string | null = null;
+try {
+  clerkUserId = (await Astro.locals.auth()).userId ?? null;
+} catch {
+  clerkUserId = null;
+}
+
+const isProForUi = await effectiveIsPremiumClerkUser(clerkUserId);
+const { maxBytes: maxUploadBytes } = await maxUploadLimitForClerkUser(clerkUserId);
+const uploadTooLargeMsg = uploadFileTooLargeMessage(maxUploadBytes, isProForUi);
+const faqFreeUploadLimit = formatUploadLimitHuman(MAX_UPLOAD_BYTES_FREE);
+const faqProUploadLimit = formatUploadLimitHuman(MAX_UPLOAD_BYTES_PREMIUM);
 ---
 
 <BaseLayout title="thelnk · Short links & file sharing">
-  <div slot="auth" class="auth-slot">
-    <Show when="signed-in">
-      <UserButton />
-    </Show>
-    <Show when="signed-out">
-      <span class="auth-login-wrap"><SignInButton mode="modal" /></span>
-      <span class="auth-upgrade-wrap"><SignUpButton mode="modal" /></span>
-    </Show>
-  </div>
-
   <section class="hero" id="hero">
 
     <div class="hero-copy">
@@ -29,17 +40,27 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
       </div>
     </div>
 
+    <div class="hero-tool-column">
     <div class="tool-card">
 
       <!-- Segmented control -->
       <div class="seg-track" role="tablist">
-        <button class="seg-btn active" role="tab" data-tab="url" aria-selected="true" aria-controls="panel-url">[ LINK ]</button>
-        <button class="seg-btn" role="tab" data-tab="file" aria-selected="false" aria-controls="panel-file">[ FILE ]</button>
+        <button type="button" class="seg-btn active" role="tab" data-tab="url" aria-selected="true" aria-controls="panel-url">[ LINK ]</button>
+        <button type="button" class="seg-btn" role="tab" data-tab="file" aria-selected="false" aria-controls="panel-file">[ FILE ]</button>
       </div>
 
-      <!-- URL panel -->
-      <div id="panel-url" class="tool-panel" role="tabpanel">
+      <div class="tool-panels">
+        <!-- URL panel -->
+        <div id="panel-url" class="tool-panel" role="tabpanel" aria-hidden="false">
         <form id="form-url" class="url-form" novalidate>
+          <div class="url-form-examples" role="group" aria-label="Example URLs for quick tests">
+            <span class="url-form-examples-kicker">Quick test</span>
+            <button type="button" class="example-url-btn" data-url="https://example.com/">example.com</button>
+            <button type="button" class="example-url-btn" data-url="https://en.wikipedia.org/wiki/Main_Page">Wikipedia</button>
+            <button type="button" class="example-url-btn" data-url="https://github.com/">GitHub</button>
+            <button type="button" class="example-url-btn" data-url="https://news.ycombinator.com/">Hacker News</button>
+            <button type="button" class="example-url-btn" data-url="https://example.com/very/long/path/for/testing/shortener/preview/behavior">Long path</button>
+          </div>
           <input
             id="targetUrl"
             name="targetUrl"
@@ -59,6 +80,7 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
         <div id="out-url" class="result-wrapper">
           <div class="result-inner">
             <div class="result-box">
+              <p class="result-hint" hidden>your lnk can be found at</p>
               <div class="result-row">
                 <a class="result-url" href="#" target="_blank" rel="noopener noreferrer"></a>
                 <button class="copy-btn" type="button" aria-label="Copy link">
@@ -71,10 +93,10 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
             </div>
           </div>
         </div>
-      </div>
+        </div>
 
-      <!-- File panel -->
-      <div id="panel-file" class="tool-panel hidden" role="tabpanel">
+        <!-- File panel -->
+        <div id="panel-file" class="tool-panel" role="tabpanel" aria-hidden="true" inert>
         <input id="file" name="file" type="file" class="sr-only" />
         <div id="drop-zone" class="drop-zone">
           <div class="dz-icon-wrap" aria-hidden="true">
@@ -106,6 +128,7 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
         <div id="out-file" class="result-wrapper">
           <div class="result-inner">
             <div class="result-box">
+              <p class="result-hint" hidden>your lnk can be found at</p>
               <div class="result-row">
                 <a class="result-url" href="#" target="_blank" rel="noopener noreferrer"></a>
                 <button class="copy-btn" type="button" aria-label="Copy link">
@@ -119,10 +142,24 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
           </div>
         </div>
       </div>
+      </div>
 
     </div>
+    </div>
+
+    <div
+      id="__uploadLimits"
+      class="sr-only"
+      aria-hidden="true"
+      data-max-upload-bytes={String(maxUploadBytes)}
+      data-upload-too-large-msg={uploadTooLargeMsg}
+    ></div>
 
   </section>
+
+  <LinksServedCounter count={linksServedCount} />
+
+  <WallOfFame data={wallOfFameData} />
 
   <!-- Trust marquee (hidden) -->
   <section class="trust trust--hidden" aria-label="Used by teams at leading startups">
@@ -165,6 +202,7 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   </section>
 
   <!-- Pricing -->
+  {!isProForUi && (
   <section class="pricing" id="pricing">
     <div class="pricing-header">
       <p class="section-kicker">— Pricing</p>
@@ -217,6 +255,7 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
       </div>
     </div>
   </section>
+  )}
 
   <!-- FAQ -->
   <section class="faq">
@@ -253,8 +292,32 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
         </p>
       </details>
       <details class="faq-item">
+        <summary>How large can file uploads be?</summary>
+        <p>
+          Anonymous and free accounts: up to <strong>{faqFreeUploadLimit}</strong> per file. Pro and Lifetime: up to <strong>{faqProUploadLimit}</strong> per file (single browser upload; very large objects may eventually move to multipart uploads).
+        </p>
+      </details>
+      <details class="faq-item">
+        <summary>What do we do with your files?</summary>
+        <p>
+          We just store your uploads so your file link keeps working. <strong>Free and anonymous accounts:</strong>
+          uploaded files are deleted after <strong>30 days</strong>. <strong>Pro (monthly):</strong> your files stay
+          available for as long as your subscription is active. <strong>Lifetime:</strong> files you upload while your
+          license is in good standing remain available for the operational lifetime of the service (see Terms).
+        </p>
+      </details>
+      <details class="faq-item">
         <summary>What file types can I share?</summary>
         <p>Any file type is supported — images, documents, archives, videos. Files are stored securely and served via a short link identical to a shortened URL.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Can pricing, features, or limits change?</summary>
+        <p>
+          Yes. We reserve the right to adjust <strong>pricing</strong>, <strong>features</strong>, and
+          <strong>usage limits</strong> (upload sizes, per-link caps, retention, and similar) as needed to run and
+          improve the service. We aim to give paying subscribers reasonable notice when a change would materially affect
+          them. Full detail is in our <a href="/terms">Terms of use</a>.
+        </p>
       </details>
     </div>
   </section>
@@ -267,19 +330,49 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     else document.addEventListener('DOMContentLoaded', () => resolve(), { once: true });
   });
 
+  const __limits = document.getElementById('__uploadLimits');
+  const maxUploadBytes = Number(__limits?.dataset.maxUploadBytes ?? 0);
+  const uploadTooLargeMsg = __limits?.dataset.uploadTooLargeMsg ?? '';
+
   // Tabs
   const segBtns = document.querySelectorAll<HTMLButtonElement>('.seg-btn');
   const panelUrl = document.getElementById('panel-url')!;
   const panelFile = document.getElementById('panel-file')!;
+
+  function applyToolTab(urlActive: boolean) {
+    segBtns.forEach(b => {
+      const on = b.dataset.tab === (urlActive ? 'url' : 'file');
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    panelUrl.setAttribute('aria-hidden', String(!urlActive));
+    panelFile.setAttribute('aria-hidden', String(urlActive));
+    if (urlActive) {
+      panelUrl.removeAttribute('inert');
+      panelFile.setAttribute('inert', '');
+    } else {
+      panelFile.removeAttribute('inert');
+      panelUrl.setAttribute('inert', '');
+    }
+  }
+
   segBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      const t = btn.dataset.tab;
-      segBtns.forEach(b => {
-        b.classList.toggle('active', b.dataset.tab === t);
-        b.setAttribute('aria-selected', String(b.dataset.tab === t));
-      });
-      panelUrl.classList.toggle('hidden', t !== 'url');
-      panelFile.classList.toggle('hidden', t !== 'file');
+      applyToolTab(btn.dataset.tab === 'url');
+    });
+  });
+  applyToolTab(true);
+
+  const targetUrlEl = document.getElementById('targetUrl') as HTMLInputElement | null;
+  const outUrlEl = document.getElementById('out-url');
+  document.querySelectorAll<HTMLButtonElement>('.example-url-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const u = btn.dataset.url?.trim();
+      if (!u || !targetUrlEl) return;
+      targetUrlEl.value = u;
+      targetUrlEl.dispatchEvent(new Event('input', { bubbles: true }));
+      outUrlEl?.classList.remove('visible');
+      targetUrlEl.focus();
     });
   });
 
@@ -292,9 +385,11 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
 
   function showResult(wrapper: HTMLElement, text: string, isErr: boolean) {
     const inner = wrapper.querySelector<HTMLElement>('.result-box');
+    const hint = wrapper.querySelector<HTMLElement>('.result-hint');
     const row = wrapper.querySelector<HTMLElement>('.result-row');
     const u = wrapper.querySelector<HTMLAnchorElement>('.result-url');
     const c = wrapper.querySelector<HTMLElement>('.copy-btn');
+    if (hint) hint.hidden = isErr;
     if (u) {
       u.href = isErr ? '#' : text;
       u.textContent = isErr ? text : shortUrlForDisplay(text);
@@ -372,24 +467,83 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   const btnUrl = document.getElementById('btn-url');
 
   if (formUrl instanceof HTMLFormElement && outUrl && btnUrl instanceof HTMLButtonElement) {
+    const urlBtn = btnUrl;
+    const URL_DEFAULT_BTN_HTML = urlBtn.innerHTML;
+    const URL_WAIT_TEXT = 'please wait a while before ...';
+    const targetUrlInput = formUrl.querySelector<HTMLInputElement>('#targetUrl');
+    const URL_SUBMIT_BACKOFF_BASE_MS = 1000;
+    const URL_SUBMIT_BACKOFF_MAX_MS = 30000;
+    const URL_SUBMIT_BACKOFF_RESET_MS = 60000;
+    let urlSubmitCooldownUntil = 0;
+    let urlSubmitAttempts = 0;
+    let lastUrlSubmitAt = 0;
+    let urlNeedsFreshInput = false;
+    let cooldownTimer: number | null = null;
+
+    function scheduleCooldownRefresh() {
+      if (cooldownTimer) clearTimeout(cooldownTimer);
+      const remaining = urlSubmitCooldownUntil - Date.now();
+      if (remaining <= 0) return;
+      cooldownTimer = window.setTimeout(() => {
+        refreshUrlSubmitState();
+      }, remaining + 5);
+    }
+
+    function refreshUrlSubmitState() {
+      const coolingDown = Date.now() < urlSubmitCooldownUntil;
+      const loading = urlBtn.classList.contains('is-loading');
+      urlBtn.disabled = loading || urlNeedsFreshInput || coolingDown;
+      if (!loading) {
+        if (urlBtn.disabled) urlBtn.textContent = URL_WAIT_TEXT;
+        else urlBtn.innerHTML = URL_DEFAULT_BTN_HTML;
+      }
+    }
+
+    targetUrlInput?.addEventListener('input', () => {
+      if (targetUrlInput.value.trim()) urlNeedsFreshInput = false;
+      outUrl.classList.remove('visible');
+      refreshUrlSubmitState();
+    });
+
+    refreshUrlSubmitState();
+
     formUrl.addEventListener('submit', async e => {
       e.preventDefault();
       outUrl.classList.remove('visible');
-      const targetUrlInput = formUrl.querySelector<HTMLInputElement>('#targetUrl');
       const targetUrl = String(new FormData(formUrl).get('targetUrl') ?? '').trim();
       if (!targetUrl) {
         targetUrlInput?.focus();
+        refreshUrlSubmitState();
         return;
       }
 
-      const orig = btnUrl.innerHTML;
-      btnUrl.disabled = true;
-      btnUrl.classList.add('is-loading');
-      btnUrl.setAttribute('aria-busy', 'true');
-      btnUrl.innerHTML =
+      const now = Date.now();
+      if (now < urlSubmitCooldownUntil) {
+        const waitSeconds = Math.max(1, Math.ceil((urlSubmitCooldownUntil - now) / 1000));
+        showResult(outUrl, `Please wait ${waitSeconds}s before submitting again.`, true);
+        refreshUrlSubmitState();
+        return;
+      }
+
+      urlBtn.disabled = true;
+      urlBtn.classList.add('is-loading');
+      urlBtn.setAttribute('aria-busy', 'true');
+      urlBtn.innerHTML =
         '<span class="btn-url-spin" aria-hidden="true"></span><span class="btn-url-loading-text">Shortening…</span>';
       await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
       try {
+        if (now - lastUrlSubmitAt > URL_SUBMIT_BACKOFF_RESET_MS) {
+          urlSubmitAttempts = 0;
+        }
+        const cooldownMs = Math.min(
+          URL_SUBMIT_BACKOFF_BASE_MS * (2 ** urlSubmitAttempts),
+          URL_SUBMIT_BACKOFF_MAX_MS,
+        );
+        urlSubmitAttempts += 1;
+        lastUrlSubmitAt = now;
+        urlSubmitCooldownUntil = now + cooldownMs;
+        scheduleCooldownRefresh();
+
         const res = await fetch('/api/links/url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -406,29 +560,44 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
           showResult(outUrl, data.shortUrl ?? 'Created', false);
         }
       } finally {
-        btnUrl.disabled = false;
-        btnUrl.classList.remove('is-loading');
-        btnUrl.removeAttribute('aria-busy');
-        btnUrl.innerHTML = orig;
+        if (targetUrlInput) targetUrlInput.value = '';
+        urlNeedsFreshInput = true;
+        urlBtn.classList.remove('is-loading');
+        urlBtn.removeAttribute('aria-busy');
+        refreshUrlSubmitState();
       }
     });
   }
 
-  // File upload
-  const fileInput = document.getElementById('file') as HTMLInputElement;
-  const dropZone = document.getElementById('drop-zone')!;
-  const fileReady = document.getElementById('file-ready')!;
-  const fileNameEl = document.getElementById('file-name')!;
-  const clearFile = document.getElementById('clear-file')!;
-  const btnFile = document.getElementById('btn-file') as HTMLButtonElement;
-  const outFile = document.getElementById('out-file')!;
+  // File upload (guarded so a DOM mismatch never blocks URL tab / hero script)
+  const fileInput = document.getElementById('file') as HTMLInputElement | null;
+  const dropZone = document.getElementById('drop-zone');
+  const fileReady = document.getElementById('file-ready');
+  const fileNameEl = document.getElementById('file-name');
+  const clearFile = document.getElementById('clear-file');
+  const btnFile = document.getElementById('btn-file') as HTMLButtonElement | null;
+  const outFile = document.getElementById('out-file');
   let selectedFile: File | null = null;
+
+  if (fileInput && dropZone && fileReady && fileNameEl && clearFile && btnFile && outFile) {
+  const fi = fileInput;
+  const dz = dropZone;
+  const fr = fileReady;
+  const fnEl = fileNameEl;
+  const out = outFile;
 
   function setFile(f: File | null) {
     selectedFile = f;
-    outFile.classList.remove('visible');
-    if (f) { fileNameEl.textContent = f.name; dropZone.hidden = true; fileReady.hidden = false; }
-    else { dropZone.hidden = false; fileReady.hidden = true; fileInput.value = ''; }
+    out.classList.remove('visible');
+    if (f) {
+      fnEl.textContent = f.name;
+      dz.hidden = true;
+      fr.hidden = false;
+    } else {
+      dz.hidden = false;
+      fr.hidden = true;
+      fi.value = '';
+    }
   }
 
   dropZone.addEventListener('click', () => fileInput.click());
@@ -441,30 +610,104 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   fileInput.addEventListener('change', () => { const f = fileInput.files?.[0]; if (f) setFile(f); });
   clearFile.addEventListener('click', () => setFile(null));
 
+  const FILE_UPLOAD_PREP_HTML = `<span class="upload-progress-label" aria-live="polite">Preparing…</span>`;
+
+  function mountFileUploadPctUI(btn: HTMLButtonElement): { setPct: (n: number) => void } {
+    btn.innerHTML = `<span class="upload-progress-label" aria-live="polite">Uploading 0%</span>`;
+    const label = btn.querySelector<HTMLElement>('.upload-progress-label');
+    return {
+      setPct(n: number) {
+        const p = Math.max(0, Math.min(100, Math.round(n)));
+        if (label) label.textContent = `Uploading ${p}%`;
+        btn.style.background = `linear-gradient(90deg, var(--accent) 0%, var(--accent) ${p}%, rgba(10, 10, 10, 0.9) ${p}%, rgba(10, 10, 10, 0.9) 100%)`;
+      },
+    };
+  }
+
+  function putPresignedWithProgress(
+    uploadUrl: string,
+    file: File,
+    contentType: string,
+    onProgress: (pct: number) => void,
+  ): Promise<{ ok: boolean; status: number }> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', contentType);
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable || !e.total) return;
+        onProgress((100 * e.loaded) / e.total);
+      };
+      xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status });
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.onabort = () => reject(new Error('Aborted'));
+      xhr.send(file);
+    });
+  }
+
   btnFile.addEventListener('click', async () => {
-    const file = selectedFile; if (!file) return;
+    const file = selectedFile;
+    if (!file) return;
+    if (file.size > maxUploadBytes) {
+      showResult(outFile, uploadTooLargeMsg, true);
+      return;
+    }
     outFile.classList.remove('visible');
     const orig = btnFile.innerHTML;
-    btnFile.disabled = true; btnFile.textContent = 'Uploading…';
+    btnFile.disabled = true;
+    btnFile.classList.add('is-uploading');
+    btnFile.innerHTML = FILE_UPLOAD_PREP_HTML;
     try {
       const initRes = await fetch('/api/uploads/init', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, contentType: file.type || 'application/octet-stream', size: file.size }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type || 'application/octet-stream',
+          size: file.size,
+        }),
       });
       const init = (await initRes.json().catch(() => ({}))) as {
-        uploadUrl?: string; r2Key?: string; contentType?: string; size?: number; filename?: string; error?: string;
+        uploadUrl?: string;
+        r2Key?: string;
+        contentType?: string;
+        size?: number;
+        filename?: string;
+        error?: string;
       };
-      if (!initRes.ok) { showResult(outFile, init.error ?? initRes.statusText, true); return; }
-      const putRes = await fetch(init.uploadUrl!, {
-        method: 'PUT', headers: { 'Content-Type': (init.contentType ?? file.type) || 'application/octet-stream' }, body: file,
+      if (!initRes.ok) {
+        showResult(outFile, init.error ?? initRes.statusText, true);
+        return;
+      }
+      const contentType = (init.contentType ?? file.type) || 'application/octet-stream';
+      const { setPct } = mountFileUploadPctUI(btnFile);
+      let last = -1;
+      const put = await putPresignedWithProgress(init.uploadUrl!, file, contentType, (raw) => {
+        const p = Math.min(100, raw);
+        if (p === last) return;
+        last = p;
+        setPct(p);
       });
-      if (!putRes.ok) { showResult(outFile, `Upload failed (${putRes.status})`, true); return; }
+      setPct(100);
+      if (!put.ok) {
+        showResult(outFile, `Upload failed (${put.status})`, true);
+        return;
+      }
       const doneRes = await fetch('/api/uploads/complete', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ r2Key: init.r2Key, filename: init.filename ?? file.name, contentType: (init.contentType ?? file.type) || 'application/octet-stream', size: init.size ?? file.size }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          r2Key: init.r2Key,
+          filename: init.filename ?? file.name,
+          contentType,
+          size: init.size ?? file.size,
+        }),
       });
       const done = (await doneRes.json().catch(() => ({}))) as {
-        shortUrl?: string; error?: string; detail?: string; reason?: string;
+        shortUrl?: string;
+        error?: string;
+        detail?: string;
+        reason?: string;
       };
       if (!doneRes.ok) {
         const base = done.error ?? doneRes.statusText;
@@ -474,19 +717,35 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
         setFile(null);
         showResult(outFile, done.shortUrl ?? 'Created', false);
       }
-    } finally { btnFile.disabled = false; btnFile.innerHTML = orig; }
+    } catch {
+      showResult(outFile, 'Upload failed (network error)', true);
+    } finally {
+      btnFile.classList.remove('is-uploading');
+      btnFile.disabled = false;
+      btnFile.innerHTML = orig;
+      btnFile.style.removeProperty('background');
+    }
   });
+  }
 </script>
 
 <style>
-  .auth-slot { display: flex; align-items: center; gap: 0.5rem; }
-
-
   /* ── Hero ── */
   .hero {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    align-items: center;
+    /* stretch: row height from the taller column; inner column centers the tool card */
+    align-items: stretch;
+  }
+
+  .hero-tool-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    min-width: 0;
+    min-height: 0;
+    align-self: stretch;
   }
 
   .hero-copy {
@@ -545,18 +804,24 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     top: 52px;
   }
 
-  /* Tabs */
+  /* Tabs — equal halves so active underline matches tab width */
   .seg-track {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     border-bottom: 1px solid var(--border);
     margin-bottom: 1.75rem;
+    /* Stay above .tool-panels so nothing (panels, grids, sr-only inputs) can eat clicks */
+    position: relative;
+    z-index: 2;
   }
   .seg-btn {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.6rem 1.5rem 0.6rem 0;
-    margin-right: 1.5rem;
+    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.6rem 0.5rem;
+    margin: 0;
     border: none;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
@@ -573,10 +838,88 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
   .seg-btn.active { color: var(--text); border-bottom-color: var(--accent); }
   .seg-btn:hover:not(.active) { color: var(--text); }
 
-  .tool-panel.hidden { display: none; }
+  /* Both panels share one grid cell so row height = max(LINK, FILE); hidden tab stays in layout */
+  .tool-panels {
+    display: grid;
+    grid-template-columns: 1fr;
+    position: relative;
+    z-index: 0;
+    align-self: stretch;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* Desktop: hero row fills viewport under header so tool column can vertically center */
+  @media (min-width: 769px) {
+    .hero {
+      grid-template-rows: 1fr;
+      min-height: calc(100svh - 52px);
+    }
+
+    .hero-copy {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 0;
+    }
+  }
+
+  .tool-panels > .tool-panel {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .tool-panels > .tool-panel[aria-hidden='true'] {
+    visibility: hidden;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+  }
+
+  .tool-panels > .tool-panel[aria-hidden='false'] {
+    visibility: visible;
+    z-index: 1;
+  }
 
   /* URL form */
   .url-form { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .url-form-examples {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.45rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .url-form-examples-kicker {
+    flex: 0 0 auto;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-right: 0.1rem;
+  }
+
+  .example-url-btn {
+    padding: 0.28rem 0.55rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    color: var(--muted);
+    border-color: var(--border);
+    line-height: 1.2;
+  }
+
+  .example-url-btn:hover {
+    color: var(--text);
+    border-color: rgba(255, 229, 0, 0.35);
+  }
 
   .submit-btn {
     width: 100%;
@@ -617,14 +960,55 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
     width: 100%;
   }
 
+  .file-upload-btn.is-uploading {
+    position: relative;
+    justify-content: center;
+    padding-top: 0.72rem;
+    padding-bottom: 0.72rem;
+    text-transform: none;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+
+  .file-upload-btn.is-uploading:disabled,
+  .file-upload-btn.is-uploading:disabled:hover {
+    opacity: 1 !important;
+    cursor: wait;
+    background: rgba(10, 10, 10, 0.9);
+    border-color: rgba(255, 229, 0, 0.45);
+    color: var(--text);
+  }
+
+  .upload-progress-label {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text);
+  }
+
+  @keyframes upload-bar-busy {
+    0% {
+      transform: translateX(-120%);
+    }
+    100% {
+      transform: translateX(320%);
+    }
+  }
+
   /* Result */
   .result-wrapper {
     display: grid;
     grid-template-rows: 0fr;
     transition: grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   }
+  .result-wrapper:not(.visible) {
+    pointer-events: none;
+  }
   .result-wrapper.visible { grid-template-rows: 1fr; }
-  .result-inner { overflow: hidden; }
+  .result-inner {
+    overflow: hidden;
+    min-height: 0;
+  }
 
   @keyframes result-url-marker {
     0% {
@@ -682,11 +1066,25 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
 
   .result-box {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: 0.15rem;
     padding: 1.25rem 0 0.25rem;
     border-top: 1px solid var(--border);
     margin-top: 1.25rem;
+  }
+
+  .result-hint {
+    margin: 0;
+    padding: 0;
+    font-size: 0.56rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    opacity: 0.9;
+    text-align: center;
+    line-height: 1.3;
   }
 
   .result-row {
@@ -1115,7 +1513,14 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/astro/compo
 
   /* ── Responsive ── */
   @media (max-width: 768px) {
-    .hero { grid-template-columns: 1fr; min-height: auto; }
+    .hero {
+      grid-template-columns: 1fr;
+      grid-template-rows: none;
+      min-height: auto;
+    }
+    .hero-tool-column {
+      justify-content: flex-start;
+    }
     .hero-copy {
       border-right: none;
       border-bottom: 1px solid var(--border);

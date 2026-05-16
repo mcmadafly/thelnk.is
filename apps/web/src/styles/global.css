@@ -40,22 +40,148 @@ a:hover { text-decoration: underline; }
 .top {
   display: flex;
   align-items: center;
+  gap: 1rem;
   padding: 0 2rem;
   height: 52px;
   border-bottom: 1px solid var(--border);
   background: var(--bg);
+  min-width: 0;
 }
 
 .brand {
-  font-size: 0.72rem;
+  font-family: var(--mono);
+  font-size: clamp(0.58rem, 1.65vw, 0.72rem);
   font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  text-decoration: none;
   color: var(--text);
+  display: block;
+  min-width: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
 }
-.brand:hover { text-decoration: none; color: var(--accent); }
+.brand:hover {
+  text-decoration: none;
+  color: var(--accent);
+}
+.brand-host {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.brand-lockup {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  text-align: left;
+}
+.brand-rotator {
+  display: inline-grid;
+  vertical-align: baseline;
+  justify-items: start;
+  text-align: left;
+}
+.brand-rand {
+  min-width: 7ch;
+  display: inline-block;
+}
+.brand-rotator > span {
+  grid-area: 1 / 1;
+  opacity: 0;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  animation: brand-logo-word 27s ease-in-out infinite backwards;
+  justify-self: start;
+  text-align: left;
+}
+.brand-rotator > span:nth-child(1) {
+  animation-delay: 0s;
+}
+.brand-rotator > span:nth-child(2) {
+  animation-delay: 3s;
+}
+.brand-rotator > span:nth-child(3) {
+  animation-delay: 6s;
+}
+.brand-rotator > span:nth-child(4) {
+  animation-delay: 9s;
+}
+.brand-rotator > span:nth-child(5) {
+  animation-delay: 12s;
+}
+.brand-rotator > span:nth-child(6) {
+  animation-delay: 15s;
+}
+.brand-rotator > span:nth-child(7) {
+  animation-delay: 18s;
+}
+.brand-rotator > span:nth-child(8) {
+  animation-delay: 21s;
+}
+.brand-rotator > span:nth-child(9) {
+  animation-delay: 24s;
+}
 
-.auth { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+@keyframes brand-logo-word {
+  0% {
+    opacity: 0;
+  }
+  2% {
+    opacity: 1;
+  }
+  9% {
+    opacity: 1;
+  }
+  11.15% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-rotator > span {
+    animation: none;
+    opacity: 0;
+  }
+  .brand-rotator > span:nth-child(1) {
+    opacity: 1;
+  }
+}
+
+.auth {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-shrink: 0;
+  min-width: min-content;
+}
+
+.auth-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Clerk UserButton mounts into an empty div until JS loads — reserve space so the header does not look broken */
+.auth-slot [data-clerk-id^='clerk-user-button'] {
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
 
 .auth-pro-link {
   font-family: var(--mono);
@@ -75,6 +201,41 @@ a:hover { text-decoration: underline; }
   border-color: var(--accent);
   color: #000;
   text-decoration: none;
+}
+
+.auth-dashboard-link {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--muted);
+  padding: 0.32rem 0.6rem;
+  border: 1px solid var(--border);
+  line-height: 1.2;
+  transition: color 0.1s, border-color 0.1s, background 0.1s;
+}
+.auth-dashboard-link:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  text-decoration: none;
+  background: rgba(255, 229, 0, 0.08);
+}
+
+.auth-pro-badge {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #000;
+  padding: 0.32rem 0.65rem;
+  border: 1px solid var(--accent);
+  line-height: 1.2;
+  background: var(--accent);
+  cursor: default;
+  user-select: none;
 }
 
 .main { flex: 1; }
@@ -209,6 +370,7 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0;
   margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;
+  pointer-events: none;
 }
 
 /* Download page */

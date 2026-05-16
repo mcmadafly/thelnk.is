@@ -8,16 +8,23 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "check": "astro check",
     "deploy": "astro build && wrangler deploy",
+    "migrate": "wrangler d1 migrations apply thelnk --remote",
+    "db:migrate:local": "wrangler d1 migrations apply thelnk --local",
+    "db:migrate:remote": "wrangler d1 migrations apply thelnk --remote",
     "preview": "astro preview",
     "astro": "astro",
-    "generate-types": "wrangler types --include-runtime=false"
+    "generate-types": "wrangler types --include-runtime=false",
+    "wall-of-fame:build": "bun run ../../scripts/build-wall-of-fame.ts",
+    "wall-of-fame:refresh-previews": "bun run ../../scripts/refresh-wall-previews.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.5.0",
     "@clerk/astro": "^3.2.2",
     "astro": "^6.3.1",
     "aws4fetch": "^1.0.20",
+    "chart.js": "^4.5.1",
     "nanoid": "^5.1.11",
     "simple-icons": "^16.19.0",
     "stripe": "^17.4.0",
@@ -26,5 +33,10 @@
   },
   "overrides": {
     "vite": "^7"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@cloudflare/workers-types": "^4.20260516.1",
+    "typescript": "^6.0.3"
   }
 }

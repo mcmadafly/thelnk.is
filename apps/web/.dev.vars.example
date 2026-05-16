@@ -1,5 +1,8 @@
 # Copy to `.dev.vars` (gitignored). Wrangler loads this for `astro dev` / `wrangler dev`.
 
+# D1: `wrangler.jsonc` binds `DB` with `remote: true`, so local `astro dev` talks to *production* D1 (needs `wrangler login`).
+# KV + R2 stay on local simulators unless you add `"remote": true` there too. Be careful: inserts/updates hit prod.
+
 # Clerk (https://dashboard.clerk.com)
 CLERK_SECRET_KEY=
 PUBLIC_CLERK_PUBLISHABLE_KEY=
@@ -13,6 +16,15 @@ STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_LIFETIME_PRICE_ID=
 STRIPE_MONTHLY_PRICE_ID=
+
+# Optional: Microlink Pro API key for higher screenshot rate limits (https://microlink.io)
+MICROLINK_API_KEY=
+
+# Optional: Discord webhook for link/file create notifications
+DISCORD_WEBHOOK_URL=
+
+# Optional: any signed-in user is treated as Pro for header, pricing hide, upload limits (local dev). true | 1 | yes | on
+# FORCE_PRO=true
 
 # Optional overrides (otherwise use wrangler.jsonc `vars`)
 # R2_ACCOUNT_ID=

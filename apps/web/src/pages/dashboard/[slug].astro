@@ -1,0 +1,383 @@
+---
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { effectiveIsPremiumClerkUser } from '../../lib/plan';
+import { canonicalSlugForPath } from '../../lib/resolve-link-slug';
+import { isValidSlug } from '../../lib/slug';
+
+export const prerender = false;
+
+type LinkRow = {
+  slug: string;
+  type: 'url' | 'file';
+  target_url: string | null;
+  original_filename: string | null;
+  size_bytes: number;
+  created_at: number;
+  use_count: number;
+  max_uses: number;
+  last_used_at: number | null;
+};
+
+type AnalyticsRow = {
+  day_start: number;
+  hits: number;
+};
+
+let clerkUserId: string | null = null;
+try {
+  clerkUserId = (await Astro.locals.auth()).userId ?? null;
+} catch {
+  clerkUserId = null;
+}
+
+if (!clerkUserId) {
+  return Astro.redirect('/sign-in');
+}
+
+const rawSlug = Astro.params.slug ?? '';
+if (!isValidSlug(rawSlug)) {
+  return new Response('Not found', { status: 404 });
+}
+
+const resolvedSlug = await canonicalSlugForPath(env.DB, rawSlug);
+if (!resolvedSlug) {
+  return new Response('Not found', { status: 404 });
+}
+
+const link = await env.DB.prepare(
+  `SELECT slug, type, target_url, original_filename, size_bytes, created_at, use_count, max_uses, last_used_at
+   FROM links
+   WHERE slug = ? AND clerk_user_id = ?
+   LIMIT 1`,
+)
+  .bind(resolvedSlug, clerkUserId)
+  .first<LinkRow>();
+
+if (!link) {
+  return new Response('Not found', { status: 404 });
+}
+
+const isPro = await effectiveIsPremiumClerkUser(clerkUserId);
+const shortOrigin = env.PUBLIC_SHORT_ORIGIN.replace(/\/+$/, '');
+const shortUrl = `${shortOrigin}/${link.slug}`;
+
+const dayCount = 30;
+const daySec = 86400;
+const now = new Date();
+const todayUtcStartSec = Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 1000);
+const dayStarts = Array.from({ length: dayCount }, (_, i) => todayUtcStartSec - ((dayCount - 1 - i) * daySec));
+const dayIndex = new Map<number, number>(dayStarts.map((x, i) => [x, i]));
+const points = Array(dayCount).fill(0);
+const dayLabels = dayStarts.map((ts) => {
+  const d = new Date(ts * 1000);
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+});
+
+if (isPro) {
+  const rows = await env.DB.prepare(
+    `SELECT CAST(strftime('%s', date(occurred_at, 'unixepoch')) AS INTEGER) AS day_start,
+            COUNT(*) AS hits
+     FROM link_events
+     WHERE slug = ? AND occurred_at >= ?
+     GROUP BY day_start`,
+  )
+    .bind(link.slug, dayStarts[0]!)
+    .all<AnalyticsRow>();
+
+  for (const row of rows.results ?? []) {
+    const idx = dayIndex.get(row.day_start);
+    if (idx == null) continue;
+    points[idx] = row.hits;
+  }
+}
+
+const total30d = points.reduce((sum, n) => sum + n, 0);
+const total7d = points.slice(-7).reduce((sum, n) => sum + n, 0);
+const peakDay = points.length ? Math.max(...points) : 0;
+
+function formatDate(ts: number | null): string {
+  if (!ts) return '—';
+  return new Date(ts * 1000).toLocaleString();
+}
+
+function formatBytes(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = n;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i += 1;
+  }
+  const fixed = value >= 10 || i === 0 ? 0 : 1;
+  return `${value.toFixed(fixed)} ${units[i]}`;
+}
+---
+
+<BaseLayout title={`Performance · ${link.slug} · thelnk.is`}>
+  <section class="perf-wrap">
+    <p class="perf-back"><a href="/dashboard">← Back to dashboard</a></p>
+    <header class="perf-head">
+      <div>
+        <p class="perf-kicker">Individual performance</p>
+        <h1>{link.slug}</h1>
+        <p class="perf-sub">
+          <a href={shortUrl} target="_blank" rel="noopener noreferrer">{shortUrl}</a>
+        </p>
+      </div>
+      {!isPro && (
+        <a href="/#pricing" class="perf-upgrade-btn">Upgrade to unlock charts</a>
+      )}
+    </header>
+
+    <div class="perf-stats">
+      <article><span>Type</span><strong>{link.type === 'file' ? 'File' : 'URL'}</strong></article>
+      <article><span>Created</span><strong>{formatDate(link.created_at)}</strong></article>
+      <article><span>Total usage</span><strong>{link.use_count}</strong></article>
+      <article><span>Last used</span><strong>{formatDate(link.last_used_at)}</strong></article>
+      <article><span>7d events</span><strong>{isPro ? total7d : '—'}</strong></article>
+      <article><span>30d events</span><strong>{isPro ? total30d : '—'}</strong></article>
+      <article><span>Peak day</span><strong>{isPro ? peakDay : '—'}</strong></article>
+      <article>
+        <span>Limit</span>
+        <strong>{isPro || link.max_uses < 0 ? 'Unlimited' : `${link.max_uses} uses`}</strong>
+      </article>
+    </div>
+
+    <div class="perf-panel">
+      <div class="perf-panel-head">
+        <h2>Performance chart</h2>
+        <small>Last 30 days</small>
+      </div>
+      {isPro ? (
+        <>
+          <div id="perf-chart-data" data-labels={JSON.stringify(dayLabels)} data-points={JSON.stringify(points)} hidden></div>
+          <div class="perf-chart-box">
+            <canvas id="perf-chart" aria-label="Performance chart" role="img"></canvas>
+          </div>
+        </>
+      ) : (
+        <div class="perf-locked">Upgrade to Pro to view this graph</div>
+      )}
+    </div>
+
+    <div class="perf-meta">
+      {link.type === 'file' ? (
+        <p>File: {link.original_filename ?? 'download.bin'} · {formatBytes(link.size_bytes)}</p>
+      ) : (
+        <p>Destination: {link.target_url ?? '—'}</p>
+      )}
+    </div>
+  </section>
+
+  <script>
+    import Chart from 'chart.js/auto';
+
+    const dataEl = document.getElementById('perf-chart-data');
+    const canvas = document.getElementById('perf-chart');
+    if (dataEl instanceof HTMLElement && canvas instanceof HTMLCanvasElement) {
+      const labels = JSON.parse(dataEl.dataset.labels ?? '[]') as string[];
+      const points = JSON.parse(dataEl.dataset.points ?? '[]') as number[];
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+        gradient.addColorStop(0, 'rgba(255, 229, 0, 0.35)');
+        gradient.addColorStop(1, 'rgba(255, 229, 0, 0.02)');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Events',
+                data: points,
+                borderColor: '#FFE500',
+                backgroundColor: gradient,
+                tension: 0.28,
+                borderWidth: 2,
+                fill: true,
+                pointRadius: 2,
+                pointHoverRadius: 3,
+                pointBackgroundColor: '#FFE500',
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                displayColors: false,
+                callbacks: {
+                  title(items) {
+                    return items[0]?.label ?? '';
+                  },
+                  label(item) {
+                    return `${item.parsed.y ?? 0} events`;
+                  },
+                },
+              },
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(240, 240, 240, 0.08)' },
+                ticks: {
+                  color: 'rgba(240,240,240,0.55)',
+                  maxTicksLimit: 8,
+                },
+              },
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(240, 240, 240, 0.08)' },
+                ticks: {
+                  color: 'rgba(240,240,240,0.55)',
+                  precision: 0,
+                },
+              },
+            },
+          },
+        });
+      }
+    }
+  </script>
+</BaseLayout>
+
+<style>
+  .perf-wrap {
+    max-width: 1000px;
+    margin: 1.6rem auto 2.4rem;
+    padding: 0 1.25rem;
+  }
+  .perf-back {
+    margin: 0 0 0.5rem;
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+  }
+  .perf-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.9rem;
+    align-items: flex-end;
+    margin-bottom: 0.9rem;
+  }
+  .perf-kicker {
+    margin: 0;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.66rem;
+  }
+  .perf-head h1 {
+    margin: 0.15rem 0;
+    font-size: clamp(1.1rem, 3vw, 1.4rem);
+  }
+  .perf-sub {
+    margin: 0;
+    font-size: 0.76rem;
+    word-break: break-all;
+  }
+  .perf-upgrade-btn {
+    border: 1px solid var(--accent);
+    color: #000;
+    background: var(--accent);
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.45rem 0.7rem;
+    white-space: nowrap;
+  }
+  .perf-upgrade-btn:hover {
+    text-decoration: none;
+    background: #fff176;
+    border-color: #fff176;
+  }
+  .perf-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+  }
+  .perf-stats article {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0.55rem 0.65rem;
+  }
+  .perf-stats span {
+    display: block;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.62rem;
+  }
+  .perf-stats strong {
+    display: block;
+    margin-top: 0.14rem;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+  .perf-panel {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0.7rem 0.75rem;
+  }
+  .perf-chart-box {
+    position: relative;
+    width: 100%;
+    height: 280px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.01);
+    padding: 0.3rem;
+  }
+  .perf-locked {
+    display: inline-flex;
+    border: 1px dashed rgba(255, 229, 0, 0.38);
+    color: var(--muted);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.38rem 0.55rem;
+  }
+  .perf-panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.45rem;
+  }
+  .perf-panel-head h2 {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+  .perf-panel-head small {
+    color: var(--muted);
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .perf-meta {
+    margin-top: 0.7rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0.6rem 0.7rem;
+  }
+  .perf-meta p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.74rem;
+    line-height: 1.45;
+    word-break: break-word;
+  }
+  @media (max-width: 900px) {
+    .perf-head {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .perf-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>
