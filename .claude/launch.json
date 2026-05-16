@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Web (Astro dev)",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "--cwd", "apps/web", "dev"],
+      "port": 4321
+    },
+    {
+      "name": "Web + Graphify watch",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["scripts/dev-with-graphify.sh"],
+      "port": 4321
+    }
+  ]
+}
