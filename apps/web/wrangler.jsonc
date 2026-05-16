@@ -1,7 +1,6 @@
 {
-	// D1 `remote: true`: `astro dev` uses production D1 via Vite `remoteBindings` (needs `wrangler login`).
-	// `astro build` sets `remoteBindings: false` in `astro.config.mjs` so deploy/CI avoid edge-preview auth.
-	// R2 stays local in Miniflare unless you use full remote dev — so dev-created previews can leave a D1 key with no prod R2 object; `/api/preview` self-heals by re-capturing when the object is missing.
+	// D1 + R2 `remote: true`: `astro dev` uses production bindings via Vite `remoteBindings` (needs `wrangler login`).
+	// `astro build` sets `remoteBindings: false` in `astro.config.mjs` so deploy/CI skip edge-preview auth.
 	// Caution: `wrangler d1 migrations apply` affects this database — confirm flags/env before running migrations locally.
 	"compatibility_date": "2026-05-12",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -32,7 +31,8 @@
 	"r2_buckets": [
 		{
 			"binding": "FILES",
-			"bucket_name": "thelnk"
+			"bucket_name": "thelnk",
+			"remote": true
 		}
 	],
 	"vars": {
