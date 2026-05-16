@@ -18,8 +18,7 @@
 			"binding": "DB",
 			"database_name": "thelnk",
 			"database_id": "23bf7d86-e447-4fc3-8f64-3881ae393649",
-			"migrations_dir": "migrations",
-			"remote": true
+			"migrations_dir": "migrations"
 		}
 	],
 	"kv_namespaces": [
@@ -31,8 +30,7 @@
 	"r2_buckets": [
 		{
 			"binding": "FILES",
-			"bucket_name": "thelnk",
-			"remote": true
+			"bucket_name": "thelnk"
 		}
 	],
 	"vars": {

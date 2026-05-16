@@ -23,5 +23,13 @@ export default defineConfig({
         exclude: ['@clerk/astro/server'],
       },
     },
+    server: {
+      proxy: {
+        '/api/preview': {
+          target: 'https://thelnk.is',
+          changeOrigin: true,
+        },
+      },
+    },
   },
 });
