@@ -41,6 +41,6 @@
 		"PUBLIC_APP_ORIGIN": "https://thelnk.is",
 		"PUBLIC_SHORT_ORIGIN": "https://thelnk.is",
 		"FORCE_PRO": "false",
-		"PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_Y3VkZGx5LXB1cC05OS5jbGVyay5hY2NvdW50cy5kZXYk"
+		"PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsudGhlbG5rLmlzJA"
 	}
 }
