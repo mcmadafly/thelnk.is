@@ -1,14 +1,17 @@
 ---
 import HeaderAuth from '../components/HeaderAuth.astro';
 import '../styles/global.css';
-import { effectiveIsPremiumClerkUser } from '../lib/plan';
 
 interface Props {
   title?: string;
   description?: string;
+  /** Hide the marketing footer (e.g. on public profile pages). */
+  bareFooter?: boolean;
+  /** Hide the top menu bar entirely (e.g. public profile pages — Linktree-style). */
+  bareHeader?: boolean;
 }
 
-const { title = 'thelnk.is — Short links & file sharing', description = 'Shorten any URL and share any file instantly. No account required. Free forever.' } = Astro.props;
+const { title = 'thelnk.is — One link for everything', description = 'Turn your bio link into a storefront, a feed, and a home for everything you make. Live in minutes, yours forever.', bareFooter = false, bareHeader = false } = Astro.props;
 const siteUrl = 'https://thelnk.is';
 
 let headerUserId: string | null = null;
@@ -17,9 +20,7 @@ try {
 } catch {
   headerUserId = null;
 }
-const isProSubscriber = await effectiveIsPremiumClerkUser(headerUserId);
 const isSignedIn = headerUserId !== null;
-const proLinkLabel = isSignedIn ? 'Pro' : 'Go pro';
 ---
 
 <!doctype html>
@@ -29,34 +30,27 @@ const proLinkLabel = isSignedIn ? 'Pro' : 'Go pro';
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#100f0d" />
     <link rel="canonical" href={siteUrl} />
 
-    <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content={siteUrl} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:site_name" content="thelnk.is" />
-
-    <!-- Twitter -->
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
 
-    <!-- JSON-LD -->
-    <script type="application/ld+json" set:html={JSON.stringify({
+    <script type="application/ld+json" is:inline set:html={JSON.stringify({
       "@context": "https://schema.org",
       "@type": "WebApplication",
       "name": "thelnk.is",
       "url": siteUrl,
       "description": description,
-      "applicationCategory": "UtilitiesApplication",
+      "applicationCategory": "SocialNetworkingApplication",
       "operatingSystem": "Web",
-      "offers": [
-        { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD" },
-        { "@type": "Offer", "name": "Pro monthly", "price": "4.99", "priceCurrency": "USD" },
-        { "@type": "Offer", "name": "Lifetime Pro", "price": "75", "priceCurrency": "USD" }
-      ]
+      "offers": [{ "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD" }]
     })} />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -66,57 +60,40 @@ const proLinkLabel = isSignedIn ? 'Pro' : 'Go pro';
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=optional"
+      href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
     <div class="shell">
-      <header class="top">
-        <a class="brand" href="/" aria-label="THELNK.IS home">
-          <span class="brand-lockup" aria-hidden="true">
-            <span class="brand-host">THELNK.IS/</span><span class="brand-rotator"><span>anything</span><span>you</span><span>want</span><span class="brand-rand"></span><span class="brand-rand"></span><span class="brand-rand"></span><span class="brand-rand"></span><span class="brand-rand"></span><span class="brand-rand"></span></span>
-          </span>
-        </a>
-        <div class="auth">
-          <slot name="auth">
-            <HeaderAuth />
-          </slot>
-          {isSignedIn && (
-            <a class="auth-dashboard-link" href="/dashboard" title="Manage your links">Dashboard</a>
-          )}
-          {isProSubscriber ? (
-            <span class="auth-pro-badge" title="Pro plan active">Pro</span>
-          ) : (
-            <a class="auth-pro-link" href="/#pricing" title="Pro &amp; Lifetime pricing">{proLinkLabel}</a>
-          )}
-        </div>
-      </header>
+      {!bareHeader && (
+        <header class="top">
+          <a class="brand" href="/" aria-label="thelnk.is home">thelnk<span class="dot">.is</span></a>
+          <div class="auth">
+            <slot name="auth">
+              <HeaderAuth />
+            </slot>
+            {isSignedIn ? (
+              <a class="auth-dashboard-link" href="/dashboard" title="Manage your page">Dashboard</a>
+            ) : (
+              <a class="btn-primary" href="/onboarding">Claim your link</a>
+            )}
+          </div>
+        </header>
+      )}
       <main class="main">
         <slot />
       </main>
-      <footer class="foot">
-        <span>THELNK.IS</span>
-        <nav class="foot-nav" aria-label="Legal">
-          <a href="/privacy">Privacy</a>
-          <span class="foot-nav-sep" aria-hidden="true">·</span>
-          <a href="/terms">Terms</a>
-        </nav>
-        <span>SHORT LINKS &amp; FILE DROPS</span>
-      </footer>
+      {!bareFooter && (
+        <footer class="foot">
+          <span class="foot-brand">thelnk<span class="dot">.is</span></span>
+          <nav class="foot-nav" aria-label="Legal">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+          </nav>
+          <span>One link for everything.</span>
+        </footer>
+      )}
     </div>
-    <script is:inline>
-      (function () {
-        var alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-        var len = 7;
-        document.querySelectorAll('.brand-rand').forEach(function (el) {
-          var s = '';
-          for (var i = 0; i < len; i++) {
-            s += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-          }
-          el.textContent = s;
-        });
-      })();
-    </script>
   </body>
 </html>

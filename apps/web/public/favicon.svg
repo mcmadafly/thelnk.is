@@ -8,7 +8,7 @@
       height="24"
       rx="12"
       transform="rotate(-28 47 64)"
-      stroke="#FFE500"
+      stroke="#F97316"
       stroke-width="8"
     />
     <rect
@@ -18,7 +18,7 @@
       height="24"
       rx="12"
       transform="rotate(28 81 64)"
-      stroke="#FFE500"
+      stroke="#F97316"
       stroke-width="8"
     />
   </g>

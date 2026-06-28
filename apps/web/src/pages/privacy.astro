@@ -2,70 +2,124 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<BaseLayout title="Privacy · thelnk" description="How thelnk.is handles your data.">
+<BaseLayout title="Privacy · thelnk.is" description="How thelnk.is handles your data.">
   <article class="legal">
     <h1>Privacy</h1>
-    <p class="lead">Last updated: May 2026</p>
+    <p class="lead">Last updated: June 2026</p>
+
+    <p>
+      thelnk.is is a link-in-bio service: you claim a username and publish a public page of links.
+      This policy explains what we collect, why, and who we share it with.
+    </p>
 
     <h2>What we collect</h2>
     <p>
-      When you shorten a URL or upload a file, we store the metadata needed to operate the service (for example
-      destination URL, file name, size, MIME type, and timestamps) in our database. Short links and file links are
-      associated with your Clerk account when you are signed in, or stored without an account when you use the site
-      anonymously.
+      <strong>Account data</strong> — when you sign up, our authentication provider gives us an account
+      identifier and the email address you sign in with. <strong>Profile data</strong> — the username you
+      claim and anything you add to your page (display name, bio, links, and, in future, photos and
+      products). <strong>Technical data</strong> — standard request information such as IP address and
+      user agent, processed to deliver and secure the site.
+    </p>
+
+    <h2>Your page is public</h2>
+    <p>
+      Your profile at <code>thelnk.is/your-username</code> and everything you choose to show on it are
+      <strong>public by design</strong> — that's the point of the product. Don't put anything on your page
+      you wouldn't want publicly visible.
     </p>
 
     <h2>Authentication</h2>
     <p>
-      Sign-in and account management are provided by <a href="https://clerk.com/">Clerk</a>. Clerk’s privacy policy
-      governs the data they process on our behalf for authentication.
-    </p>
-
-    <h2>Payments</h2>
-    <p>
-      If you purchase a <strong>lifetime</strong> license or subscribe to <strong>Pro monthly</strong>, payment processing is handled by <a href="https://stripe.com/">Stripe</a>.
-      We do not store your full card number on our servers. Stripe’s privacy policy applies to payment data they
-      collect.
+      Sign-in and account management are provided by <a href="https://clerk.com/" target="_blank" rel="noopener">Clerk</a>.
+      Clerk's privacy policy governs the authentication data they process on our behalf. We do not store
+      your password.
     </p>
 
     <h2>Hosting and logs</h2>
     <p>
-      The service runs on <a href="https://www.cloudflare.com/">Cloudflare</a> (Workers, D1, R2, and related
-      products). Cloudflare may process IP addresses and technical data as part of delivering and securing the site.
+      The service runs on <a href="https://www.cloudflare.com/" target="_blank" rel="noopener">Cloudflare</a>
+      (Workers, D1, R2, and related products). Cloudflare may process IP addresses and technical data as
+      part of delivering and securing the site.
+    </p>
+
+    <h2>Cookies</h2>
+    <p>
+      We use only the cookies required to keep you signed in and operate the service. We don't use
+      third-party advertising cookies.
+    </p>
+
+    <h2>Payments</h2>
+    <p>
+      Paid features and selling are not yet available. If and when we add them, payment processing will be
+      handled by a third-party processor (such as <a href="https://stripe.com/" target="_blank" rel="noopener">Stripe</a>),
+      we won't store full card numbers, and this policy will be updated before any charge is possible.
+    </p>
+
+    <h2>Your choices</h2>
+    <p>
+      You can edit or remove links and profile details at any time from your dashboard. To delete your
+      account and associated profile data, contact us at the address below.
+    </p>
+
+    <h2>Children</h2>
+    <p>thelnk.is is not directed to children under 13, and we don't knowingly collect their data.</p>
+
+    <h2>Changes</h2>
+    <p>
+      We may update this policy as the product evolves. Material changes will be reflected by the “last
+      updated” date above.
     </p>
 
     <h2>Contact</h2>
-    <p>For privacy questions, contact the operator of thelnk.is at the support channel you were given at purchase.</p>
+    <p>Questions about privacy? Email <a href="mailto:hello@thelnk.is">hello@thelnk.is</a>.</p>
 
-    <p><a href="/">← Home</a></p>
+    <p class="back"><a href="/">← Back home</a></p>
   </article>
 </BaseLayout>
 
 <style>
   .legal {
-    max-width: 40rem;
+    max-width: 42rem;
     margin: 0 auto;
-    padding: 3rem 1.5rem 4rem;
-    font-family: var(--mono);
-    font-size: 0.82rem;
+    padding: clamp(2.5rem, 6vw, 4rem) 1.5rem 4rem;
+    font-size: 0.95rem;
     line-height: 1.75;
     color: var(--muted);
   }
   .legal h1 {
-    font-family: var(--serif);
-    font-size: clamp(1.75rem, 4vw, 2.25rem);
-    color: var(--text);
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 2.6rem);
     font-weight: 700;
-    margin: 0 0 0.5rem;
-  }
-  .legal .lead { margin: 0 0 2rem; color: var(--muted); }
-  .legal h2 {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: -0.02em;
     color: var(--text);
-    margin: 2rem 0 0.75rem;
+    margin: 0 0 0.4rem;
+  }
+  .legal .lead {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    color: var(--muted-2);
+    margin: 0 0 2rem;
+  }
+  .legal h2 {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 2.25rem 0 0.6rem;
   }
   .legal p { margin: 0 0 1rem; }
   .legal a { color: var(--accent); }
+  .legal a:hover { text-decoration: underline; }
+  .legal strong { color: var(--text-dim); }
+  .legal code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    color: var(--text-dim);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.1em 0.4em;
+  }
+  .legal .back { margin-top: 2.5rem; }
 </style>

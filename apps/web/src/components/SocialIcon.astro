@@ -1,0 +1,56 @@
+---
+// Brand/social glyphs from simple-icons (tree-shaken to only what's imported here).
+// Add more by importing the matching `si<Name>` and registering it in ICONS.
+import {
+  siInstagram,
+  siTiktok,
+  siX,
+  siYoutube,
+  siSpotify,
+  siGithub,
+  siThreads,
+  siBluesky,
+  siTwitch,
+  siDiscord,
+  siSubstack,
+  siPatreon,
+} from 'simple-icons';
+
+const ICONS = {
+  instagram: siInstagram,
+  tiktok: siTiktok,
+  x: siX,
+  youtube: siYoutube,
+  spotify: siSpotify,
+  github: siGithub,
+  threads: siThreads,
+  bluesky: siBluesky,
+  twitch: siTwitch,
+  discord: siDiscord,
+  substack: siSubstack,
+  patreon: siPatreon,
+} as const;
+
+interface Props {
+  name: string;
+  size?: number;
+  /** Use the brand's official color instead of currentColor. */
+  brandColor?: boolean;
+}
+
+const { name, size = 18, brandColor = false } = Astro.props;
+const icon = ICONS[name as keyof typeof ICONS];
+---
+
+{icon && (
+  <svg
+    role="img"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill={brandColor ? `#${icon.hex}` : 'currentColor'}
+    aria-label={icon.title}
+  >
+    <path d={icon.path} />
+  </svg>
+)}

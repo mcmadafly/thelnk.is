@@ -7,10 +7,7 @@ function currentBucket(): number {
 
 /** POST rate limits per route key (per IP per minute). */
 export const RATE_LIMITS: Record<string, number> = {
-  '/api/links/url': 60,
-  '/api/uploads/init': 40,
-  '/api/uploads/complete': 40,
-  '/api/billing/checkout': 15,
+  '/api/profile/claim': 10,
 };
 
 /**

@@ -6,12 +6,6 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": ["-c", "set -a && source apps/web/.env && set +a && cd apps/web && bun run dev"],
       "port": 4321
-    },
-    {
-      "name": "Web + Graphify watch",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": ["scripts/dev-with-graphify.sh"],
-      "port": 4321
     }
   ]
 }

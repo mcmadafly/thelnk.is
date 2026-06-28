@@ -1,14 +1,11 @@
 ---
+import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import LinksServedCounter from '../components/LinksServedCounter.astro';
-import WallOfFame from '../components/WallOfFame.astro';
-import { uploadFileTooLargeMessage, formatUploadLimitHuman, MAX_UPLOAD_BYTES_FREE, MAX_UPLOAD_BYTES_PREMIUM } from '../lib/constants';
-import { loadLinksServedCount } from '../lib/links-served';
-import { effectiveIsPremiumClerkUser, maxUploadLimitForClerkUser } from '../lib/plan';
-import { loadWallOfFameData } from '../lib/wall-of-fame';
+import SocialIcon from '../components/SocialIcon.astro';
 
-const wallOfFameData = loadWallOfFameData();
-const linksServedCount = await loadLinksServedCount();
+const creatorAvatars = ['creator-1', 'creator-2', 'creator-3', 'creator-4'];
+
+export const prerender = false;
 
 let clerkUserId: string | null = null;
 try {
@@ -17,1473 +14,240 @@ try {
   clerkUserId = null;
 }
 
-const isProForUi = await effectiveIsPremiumClerkUser(clerkUserId);
-const { maxBytes: maxUploadBytes } = await maxUploadLimitForClerkUser(clerkUserId);
-const uploadTooLargeMsg = uploadFileTooLargeMessage(maxUploadBytes, isProForUi);
-const faqFreeUploadLimit = formatUploadLimitHuman(MAX_UPLOAD_BYTES_FREE);
-const faqProUploadLimit = formatUploadLimitHuman(MAX_UPLOAD_BYTES_PREMIUM);
+let myUsername: string | null = null;
+if (clerkUserId) {
+  const row = await env.DB.prepare(`SELECT username FROM profiles WHERE clerk_user_id = ?`)
+    .bind(clerkUserId)
+    .first<{ username: string }>();
+  myUsername = row?.username ?? null;
+}
+
+const origin = env.PUBLIC_APP_ORIGIN.replace(/\/+$/, '');
+const host = origin.replace(/^https?:\/\//, '');
+const isSignedIn = clerkUserId !== null;
 ---
 
-<BaseLayout title="thelnk · Short links & file sharing">
-  <section class="hero" id="hero">
+<BaseLayout>
+  <section class="hero">
+    <div class="hero-glow" aria-hidden="true"></div>
 
     <div class="hero-copy">
-      <p class="hero-kicker">— URL shortener &amp; file drops</p>
-      <h1 class="hero-title">Share<br/>any&shy;thing.</h1>
-      <p class="hero-sub">Shorten any URL. Drop any file.<br/>No account needed. Free forever.</p>
-      <div class="trust-row">
-        <span>Instant</span>
-        <span class="trust-sep">×</span>
-        <span>Anonymous</span>
-        <span class="trust-sep">×</span>
-        <span>Free</span>
-      </div>
-    </div>
+      <span class="badge"><span class="badge-dot"></span>The all-in-one creator link</span>
+      <h1 class="hero-title">Link. Sell. Post.<br/>All from <span class="hl">one link.</span></h1>
+      <p class="hero-sub">Turn your bio link into a storefront, a feed, and a home for everything you make — live in minutes, yours forever.</p>
 
-    <div class="hero-tool-column">
-    <div class="tool-card">
-
-      <!-- Segmented control -->
-      <div class="seg-track" role="tablist">
-        <button type="button" class="seg-btn active" role="tab" data-tab="url" aria-selected="true" aria-controls="panel-url">[ LINK ]</button>
-        <button type="button" class="seg-btn" role="tab" data-tab="file" aria-selected="false" aria-controls="panel-file">[ FILE ]</button>
-      </div>
-
-      <div class="tool-panels">
-        <!-- URL panel -->
-        <div id="panel-url" class="tool-panel" role="tabpanel" aria-hidden="false">
-        <form id="form-url" class="url-form" novalidate>
-          <input
-            id="targetUrl"
-            name="targetUrl"
-            type="text"
-            placeholder="https://example.com/some/long/url"
-            required
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <button type="submit" id="btn-url" class="btn-primary submit-btn" aria-live="polite">
-            Shorten
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
-            </svg>
-          </button>
+      {myUsername ? (
+        <div class="hero-actions">
+          <a class="btn-primary hero-cta" href="/dashboard">Go to your dashboard</a>
+          <p class="hero-meta">Your page: <a href={`/${myUsername}`}>{host}/{myUsername}</a></p>
+        </div>
+      ) : isSignedIn ? (
+        <a class="btn-primary hero-cta" href="/onboarding">Claim your username</a>
+      ) : (
+        <form class="claim-bar" action="/sign-up" method="get">
+          <span class="claim-bar-prefix">{host}/</span>
+          <input class="claim-bar-input" name="u" type="text" placeholder="yourname" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Choose your username" />
+          <button class="btn-primary claim-bar-btn" type="submit">Claim</button>
         </form>
-        <div id="out-url" class="result-wrapper">
-          <div class="result-inner">
-            <div class="result-box">
-              <p class="result-hint" hidden>your lnk can be found at</p>
-              <div class="result-row">
-                <a class="result-url" href="#" target="_blank" rel="noopener noreferrer"></a>
-                <button class="copy-btn" type="button" aria-label="Copy link">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect x="9" y="9" width="13" height="13" rx="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        </div>
+      )}
 
-        <!-- File panel -->
-        <div id="panel-file" class="tool-panel" role="tabpanel" aria-hidden="true" inert>
-        <input id="file" name="file" type="file" class="sr-only" />
-        <div id="drop-zone" class="drop-zone">
-          <div class="dz-icon-wrap" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-          </div>
-          <p class="dz-label">Drop a file here</p>
-          <p class="dz-hint">or <span class="browse-text">browse to upload</span></p>
+      <div class="social-proof">
+        <div class="avatars" aria-hidden="true">
+          {creatorAvatars.map((f) => (
+            <span style={`background:url('/demo/${f}.jpg') center/cover no-repeat, linear-gradient(135deg,#f97316,#d946ef)`}></span>
+          ))}
         </div>
-        <div id="file-ready" class="file-ready" hidden>
-          <div class="file-ready-meta">
-            <span id="file-name" class="file-name-text"></span>
-            <svg class="file-ready-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-              <polyline points="13 2 13 9 20 9"/>
-            </svg>
-            <button id="clear-file" class="clear-btn" type="button" aria-label="Remove">×</button>
-          </div>
-          <button id="btn-file" class="btn-primary submit-btn file-upload-btn" type="button">
-            Upload &amp; share
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
-            </svg>
-          </button>
-        </div>
-        <div id="out-file" class="result-wrapper">
-          <div class="result-inner">
-            <div class="result-box">
-              <p class="result-hint" hidden>your lnk can be found at</p>
-              <div class="result-row">
-                <a class="result-url" href="#" target="_blank" rel="noopener noreferrer"></a>
-                <button class="copy-btn" type="button" aria-label="Copy link">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect x="9" y="9" width="13" height="13" rx="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <span class="social-proof-text">Join the creators building on thelnk.is</span>
       </div>
-      </div>
-
-    </div>
     </div>
 
-    <div
-      id="__uploadLimits"
-      class="sr-only"
-      aria-hidden="true"
-      data-max-upload-bytes={String(maxUploadBytes)}
-      data-upload-too-large-msg={uploadTooLargeMsg}
-    ></div>
-
-  </section>
-
-  <LinksServedCounter count={linksServedCount} />
-
-  <WallOfFame data={wallOfFameData} />
-
-  <!-- Trust marquee (hidden) -->
-  <section class="trust trust--hidden" aria-label="Used by teams at leading startups">
-    <p class="trust-label">Used by teams at</p>
-    <div class="marquee" aria-hidden="true">
-      <div class="marquee-track">
-        <span>Stripe</span><span class="sep">×</span>
-        <span>Vercel</span><span class="sep">×</span>
-        <span>Linear</span><span class="sep">×</span>
-        <span>Figma</span><span class="sep">×</span>
-        <span>Notion</span><span class="sep">×</span>
-        <span>Loom</span><span class="sep">×</span>
-        <span>Airtable</span><span class="sep">×</span>
-        <span>Supabase</span><span class="sep">×</span>
-        <span>Resend</span><span class="sep">×</span>
-        <span>PlanetScale</span><span class="sep">×</span>
-        <span>Retool</span><span class="sep">×</span>
-        <span>Brex</span><span class="sep">×</span>
-        <span>Railway</span><span class="sep">×</span>
-        <span>Clerk</span><span class="sep">×</span>
-        <span>Anthropic</span><span class="sep">×</span>
-        <!-- duplicate for seamless loop -->
-        <span>Stripe</span><span class="sep">×</span>
-        <span>Vercel</span><span class="sep">×</span>
-        <span>Linear</span><span class="sep">×</span>
-        <span>Figma</span><span class="sep">×</span>
-        <span>Notion</span><span class="sep">×</span>
-        <span>Loom</span><span class="sep">×</span>
-        <span>Airtable</span><span class="sep">×</span>
-        <span>Supabase</span><span class="sep">×</span>
-        <span>Resend</span><span class="sep">×</span>
-        <span>PlanetScale</span><span class="sep">×</span>
-        <span>Retool</span><span class="sep">×</span>
-        <span>Brex</span><span class="sep">×</span>
-        <span>Railway</span><span class="sep">×</span>
-        <span>Clerk</span><span class="sep">×</span>
-        <span>Anthropic</span><span class="sep">×</span>
+    <!-- Phone preview -->
+    <div class="hero-phone-wrap" aria-hidden="true">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="phone-cover"></div>
+          <div class="phone-head">
+            <div class="phone-avatar" style="background:url('/demo/maya.jpg') center/cover no-repeat, linear-gradient(135deg,#f97316,#d946ef);"></div>
+            <div class="phone-name">Maya Chen</div>
+            <div class="phone-bio">Founder · ex-FAANG · every link in the Chen ⛓️</div>
+            <div class="phone-socials"><span><SocialIcon name="x" size={12} /></span><span><SocialIcon name="github" size={14} /></span><span><SocialIcon name="bluesky" size={13} /></span><span><SocialIcon name="threads" size={13} /></span></div>
+          </div>
+          <div class="phone-featured">
+            <div class="phone-featured-kicker">Now shipping</div>
+            <div class="phone-featured-title">thelnk.is v0.1</div>
+          </div>
+          <div class="phone-links">
+            <div class="phone-link"><span>Read the build log</span><span class="arr">↗</span></div>
+            <div class="phone-link"><span>Follow on Bluesky</span><span class="arr">↗</span></div>
+            <div class="phone-link"><span>Star thelnk.is on GitHub</span><span class="arr">↗</span></div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Pricing -->
-  {!isProForUi && (
-  <section class="pricing" id="pricing">
-    <div class="pricing-header">
-      <p class="section-kicker">— Pricing</p>
-      <h2 class="section-title">Simple, honest pricing.</h2>
-    </div>
-    <div class="pricing-grid">
-      <div class="plan free">
-        <p class="plan-label">Free</p>
-        <div class="plan-price">
-          <span class="price-value">$0</span>
-        </div>
-        <p class="plan-tagline">No credit card. No account required.</p>
-        <ul class="plan-features">
-          <li>URL shortening</li>
-          <li>File sharing</li>
-          <li>10 successful uses per link</li>
-          <li>No calendar expiry (fair use)</li>
-        </ul>
-        <button type="button" class="plan-cta" id="plan-cta-free">Get started free →</button>
-      </div>
-      <div class="plan paid monthly">
-        <p class="plan-label">Pro</p>
-        <div class="plan-price">
-          <span class="price-was" aria-hidden="true">$9.99</span>
-          <span class="price-value price-value--accent">$4.99</span>
-          <span class="price-period">/ mo</span>
-        </div>
-        <p class="plan-tagline">Unlimited uses while subscribed. Cancel anytime.</p>
-        <ul class="plan-features">
-          <li>Everything in Free</li>
-          <li>Unlimited successful uses per link</li>
-          <li>Billed monthly via Stripe</li>
-        </ul>
-        <button type="button" class="plan-cta btn-primary" id="plan-cta-monthly">Subscribe →</button>
-      </div>
-      <div class="plan paid lifetime">
-        <p class="plan-label">Lifetime</p>
-        <div class="plan-price">
-          <span class="price-was" aria-hidden="true">$100</span>
-          <span class="price-value">$75</span>
-          <span class="price-once">once</span>
-        </div>
-        <p class="plan-tagline">Pay once, own forever on your account.</p>
-        <ul class="plan-features">
-          <li>Everything in Free</li>
-          <li>Unlimited successful uses per link</li>
-          <li>No recurring charges</li>
-        </ul>
-        <button type="button" class="plan-cta" id="plan-cta-lifetime">Get lifetime access →</button>
-      </div>
-    </div>
-  </section>
-  )}
-
-  <!-- FAQ -->
-  <section class="faq">
-    <div class="faq-header">
-      <p class="section-kicker">— FAQ</p>
-      <h2 class="section-title">Common questions.</h2>
-    </div>
-    <div class="faq-list">
-      <details class="faq-item">
-        <summary>How many uses does a free link get?</summary>
-        <p>Free links are limited to <strong>10 successful uses</strong> per link. After that, the link stops working. <strong>Pro</strong> (monthly) or <strong>Lifetime</strong> unlocks unlimited uses for links you create while your plan is active.</p>
-      </details>
-      <details class="faq-item">
-        <summary>How long do links stay active?</summary>
-        <p>
-          We do not enforce a fixed calendar expiry today. Free and anonymous links are capped at
-          <strong>10 successful uses</strong> per link (redirects for URLs, completed downloads for files). Pro and Lifetime
-          remove that cap for links you create while your plan is active.
-        </p>
-      </details>
-      <details class="faq-item">
-        <summary>Do I need an account to use thelnk.is?</summary>
-        <p>
-          No account needed for free use. Sign in with Clerk to subscribe to Pro or buy Lifetime — checkout must be tied to an
-          account so we can upgrade the right profile.
-        </p>
-      </details>
-      <details class="faq-item">
-        <summary>What is the difference between Pro monthly and Lifetime?</summary>
-        <p>
-          <strong>Pro monthly</strong> is a recurring subscription through Stripe — unlimited per-link uses while your
-          subscription is active; cancel anytime. <strong>Lifetime</strong> is a single payment for the same unlimited
-          benefit without a monthly bill, for the operational lifetime of the service (see Terms).
-        </p>
-      </details>
-      <details class="faq-item">
-        <summary>How large can file uploads be?</summary>
-        <p>
-          Anonymous and free accounts: up to <strong>{faqFreeUploadLimit}</strong> per file. Pro and Lifetime: up to <strong>{faqProUploadLimit}</strong> per file (single browser upload; very large objects may eventually move to multipart uploads).
-        </p>
-      </details>
-      <details class="faq-item">
-        <summary>What do we do with your files?</summary>
-        <p>
-          We just store your uploads so your file link keeps working. <strong>Free and anonymous accounts:</strong>
-          uploaded files are deleted after <strong>30 days</strong>. <strong>Pro (monthly):</strong> your files stay
-          available for as long as your subscription is active. <strong>Lifetime:</strong> files you upload while your
-          license is in good standing remain available for the operational lifetime of the service (see Terms).
-        </p>
-      </details>
-      <details class="faq-item">
-        <summary>What file types can I share?</summary>
-        <p>Any file type is supported — images, documents, archives, videos. Files are stored securely and served via a short link identical to a shortened URL.</p>
-      </details>
-      <details class="faq-item">
-        <summary>Can pricing, features, or limits change?</summary>
-        <p>
-          Yes. We reserve the right to adjust <strong>pricing</strong>, <strong>features</strong>, and
-          <strong>usage limits</strong> (upload sizes, per-link caps, retention, and similar) as needed to run and
-          improve the service. We aim to give paying subscribers reasonable notice when a change would materially affect
-          them. Full detail is in our <a href="/terms">Terms of use</a>.
-        </p>
-      </details>
-    </div>
-  </section>
-
+  <script>
+    // Persist the typed username across the Clerk sign-up round-trip so onboarding can prefill it.
+    const bar = document.querySelector<HTMLFormElement>('.claim-bar');
+    const barInput = bar?.querySelector<HTMLInputElement>('.claim-bar-input');
+    if (bar && barInput) {
+      bar.addEventListener('submit', () => {
+        const v = barInput.value.trim().toLowerCase();
+        if (v) {
+          try { localStorage.setItem('thelnk_pending_username', v); } catch {}
+        }
+      });
+    }
+  </script>
 </BaseLayout>
 
-<script>
-  await new Promise<void>(resolve => {
-    if (document.readyState !== 'loading') resolve();
-    else document.addEventListener('DOMContentLoaded', () => resolve(), { once: true });
-  });
-
-  const __limits = document.getElementById('__uploadLimits');
-  const maxUploadBytes = Number(__limits?.dataset.maxUploadBytes ?? 0);
-  const uploadTooLargeMsg = __limits?.dataset.uploadTooLargeMsg ?? '';
-
-  // Tabs
-  const segBtns = document.querySelectorAll<HTMLButtonElement>('.seg-btn');
-  const panelUrl = document.getElementById('panel-url')!;
-  const panelFile = document.getElementById('panel-file')!;
-
-  function applyToolTab(urlActive: boolean) {
-    segBtns.forEach(b => {
-      const on = b.dataset.tab === (urlActive ? 'url' : 'file');
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-selected', String(on));
-    });
-    panelUrl.setAttribute('aria-hidden', String(!urlActive));
-    panelFile.setAttribute('aria-hidden', String(urlActive));
-    if (urlActive) {
-      panelUrl.removeAttribute('inert');
-      panelFile.setAttribute('inert', '');
-    } else {
-      panelFile.removeAttribute('inert');
-      panelUrl.setAttribute('inert', '');
-    }
-  }
-
-  segBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      applyToolTab(btn.dataset.tab === 'url');
-    });
-  });
-  applyToolTab(true);
-
-  const targetUrlEl = document.getElementById('targetUrl') as HTMLInputElement | null;
-  const outUrlEl = document.getElementById('out-url');
-
-  const CHECK_ICON = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
-  const COPY_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
-
-  function shortUrlForDisplay(full: string): string {
-    return full.replace(/^https?:\/\//i, '');
-  }
-
-  function showResult(wrapper: HTMLElement, text: string, isErr: boolean) {
-    const inner = wrapper.querySelector<HTMLElement>('.result-box');
-    const hint = wrapper.querySelector<HTMLElement>('.result-hint');
-    const row = wrapper.querySelector<HTMLElement>('.result-row');
-    const u = wrapper.querySelector<HTMLAnchorElement>('.result-url');
-    const c = wrapper.querySelector<HTMLElement>('.copy-btn');
-    if (hint) hint.hidden = isErr;
-    if (u) {
-      u.href = isErr ? '#' : text;
-      u.textContent = isErr ? text : shortUrlForDisplay(text);
-    }
-    if (c) c.style.display = isErr ? 'none' : '';
-    if (inner) inner.classList.toggle('err', isErr);
-    if (row) {
-      if (isErr) row.classList.remove('highlighted');
-      else {
-        row.classList.remove('highlighted');
-        row.offsetHeight;
-        row.classList.add('highlighted');
-      }
-    }
-    wrapper.classList.add('visible');
-  }
-
-  document.querySelectorAll('.copy-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const link = btn.closest('.result-box')?.querySelector<HTMLAnchorElement>('.result-url');
-      const hrefAttr = link?.getAttribute('href') ?? '';
-      const toCopy = /^https?:\/\//i.test(hrefAttr) ? hrefAttr : (link?.textContent ?? '');
-      navigator.clipboard?.writeText(toCopy).then(() => {
-        btn.innerHTML = CHECK_ICON;
-        (btn as HTMLElement).style.color = '#4ade80';
-        (btn as HTMLElement).style.borderColor = 'rgba(74,222,128,0.4)';
-        (btn as HTMLElement).style.background = 'rgba(74,222,128,0.12)';
-        setTimeout(() => {
-          btn.innerHTML = COPY_ICON;
-          (btn as HTMLElement).style.color = '';
-          (btn as HTMLElement).style.borderColor = '';
-          (btn as HTMLElement).style.background = '';
-        }, 1800);
-      });
-    });
-  });
-
-  document.getElementById('plan-cta-free')?.addEventListener('click', () => {
-    document.getElementById('hero')?.scrollIntoView({ behavior: 'smooth' });
-    document.getElementById('targetUrl')?.focus();
-  });
-
-  async function startCheckout(tier: 'monthly' | 'lifetime', btn: HTMLButtonElement) {
-    btn.disabled = true;
-    try {
-      const res = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier }),
-      });
-      const data = (await res.json()) as { url?: string; error?: string };
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      alert(data.error ?? `Checkout failed (${res.status})`);
-    } catch {
-      alert('Network error starting checkout');
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  document.getElementById('plan-cta-monthly')?.addEventListener('click', function (this: HTMLButtonElement) {
-    void startCheckout('monthly', this);
-  });
-  document.getElementById('plan-cta-lifetime')?.addEventListener('click', function (this: HTMLButtonElement) {
-    void startCheckout('lifetime', this);
-  });
-
-  // URL shortener
-  const formUrl = document.getElementById('form-url');
-  const outUrl = document.getElementById('out-url');
-  const btnUrl = document.getElementById('btn-url');
-
-  if (formUrl instanceof HTMLFormElement && outUrl && btnUrl instanceof HTMLButtonElement) {
-    const urlBtn = btnUrl;
-    const URL_DEFAULT_BTN_HTML = urlBtn.innerHTML;
-    const URL_WAIT_TEXT = 'please wait before creating a new lnk';
-    const targetUrlInput = formUrl.querySelector<HTMLInputElement>('#targetUrl');
-    const URL_SUBMIT_BACKOFF_BASE_MS = 1000;
-    const URL_SUBMIT_BACKOFF_MAX_MS = 30000;
-    const URL_SUBMIT_BACKOFF_RESET_MS = 60000;
-    let urlSubmitCooldownUntil = 0;
-    let urlSubmitAttempts = 0;
-    let lastUrlSubmitAt = 0;
-    let urlNeedsFreshInput = false;
-    let cooldownTimer: number | null = null;
-
-    function scheduleCooldownRefresh() {
-      if (cooldownTimer) clearTimeout(cooldownTimer);
-      const remaining = urlSubmitCooldownUntil - Date.now();
-      if (remaining <= 0) return;
-      cooldownTimer = window.setTimeout(() => {
-        urlNeedsFreshInput = false;
-        refreshUrlSubmitState();
-      }, remaining + 5);
-    }
-
-    function refreshUrlSubmitState() {
-      const coolingDown = Date.now() < urlSubmitCooldownUntil;
-      const loading = urlBtn.classList.contains('is-loading');
-      urlBtn.disabled = loading || urlNeedsFreshInput || coolingDown;
-      if (!loading) {
-        if (urlBtn.disabled) urlBtn.textContent = URL_WAIT_TEXT;
-        else urlBtn.innerHTML = URL_DEFAULT_BTN_HTML;
-      }
-    }
-
-    targetUrlInput?.addEventListener('input', () => {
-      if (targetUrlInput.value.trim()) urlNeedsFreshInput = false;
-      outUrl.classList.remove('visible');
-      refreshUrlSubmitState();
-    });
-
-    refreshUrlSubmitState();
-
-    formUrl.addEventListener('submit', async e => {
-      e.preventDefault();
-      outUrl.classList.remove('visible');
-      const targetUrl = String(new FormData(formUrl).get('targetUrl') ?? '').trim();
-      if (!targetUrl) {
-        targetUrlInput?.focus();
-        refreshUrlSubmitState();
-        return;
-      }
-
-      const now = Date.now();
-      if (now < urlSubmitCooldownUntil) {
-        const waitSeconds = Math.max(1, Math.ceil((urlSubmitCooldownUntil - now) / 1000));
-        showResult(outUrl, `Please wait ${waitSeconds}s before submitting again.`, true);
-        refreshUrlSubmitState();
-        return;
-      }
-
-      urlBtn.disabled = true;
-      urlBtn.classList.add('is-loading');
-      urlBtn.setAttribute('aria-busy', 'true');
-      urlBtn.innerHTML =
-        '<span class="btn-url-spin" aria-hidden="true"></span><span class="btn-url-loading-text">Shortening…</span>';
-      await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-      try {
-        if (now - lastUrlSubmitAt > URL_SUBMIT_BACKOFF_RESET_MS) {
-          urlSubmitAttempts = 0;
-        }
-        const cooldownMs = Math.min(
-          URL_SUBMIT_BACKOFF_BASE_MS * (2 ** urlSubmitAttempts),
-          URL_SUBMIT_BACKOFF_MAX_MS,
-        );
-        urlSubmitAttempts += 1;
-        lastUrlSubmitAt = now;
-        urlSubmitCooldownUntil = now + cooldownMs;
-        scheduleCooldownRefresh();
-
-        const res = await fetch('/api/links/url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ targetUrl }),
-        });
-        const data = (await res.json().catch(() => ({}))) as {
-          shortUrl?: string; error?: string; detail?: string; reason?: string;
-        };
-        if (!res.ok) {
-          const base = data.error ?? res.statusText;
-          const bits = [data.reason, data.detail].filter(Boolean);
-          showResult(outUrl, bits.length ? `${base} — ${bits.join(' — ')}` : base, true);
-        } else {
-          showResult(outUrl, data.shortUrl ?? 'Created', false);
-        }
-      } finally {
-        if (targetUrlInput) targetUrlInput.value = '';
-        urlNeedsFreshInput = true;
-        urlBtn.classList.remove('is-loading');
-        urlBtn.removeAttribute('aria-busy');
-        refreshUrlSubmitState();
-      }
-    });
-  }
-
-  // File upload (guarded so a DOM mismatch never blocks URL tab / hero script)
-  const fileInput = document.getElementById('file') as HTMLInputElement | null;
-  const dropZone = document.getElementById('drop-zone');
-  const fileReady = document.getElementById('file-ready');
-  const fileNameEl = document.getElementById('file-name');
-  const clearFile = document.getElementById('clear-file');
-  const btnFile = document.getElementById('btn-file') as HTMLButtonElement | null;
-  const outFile = document.getElementById('out-file');
-  let selectedFile: File | null = null;
-
-  if (fileInput && dropZone && fileReady && fileNameEl && clearFile && btnFile && outFile) {
-  const fi = fileInput;
-  const dz = dropZone;
-  const fr = fileReady;
-  const fnEl = fileNameEl;
-  const out = outFile;
-
-  function setFile(f: File | null) {
-    selectedFile = f;
-    out.classList.remove('visible');
-    if (f) {
-      fnEl.textContent = f.name;
-      dz.hidden = true;
-      fr.hidden = false;
-    } else {
-      dz.hidden = false;
-      fr.hidden = true;
-      fi.value = '';
-    }
-  }
-
-  dropZone.addEventListener('click', () => fileInput.click());
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault(); dropZone.classList.remove('drag-over');
-    const f = e.dataTransfer?.files[0]; if (f) setFile(f);
-  });
-  fileInput.addEventListener('change', () => { const f = fileInput.files?.[0]; if (f) setFile(f); });
-  clearFile.addEventListener('click', () => setFile(null));
-
-  const FILE_UPLOAD_PREP_HTML = `<span class="upload-progress-label" aria-live="polite">Preparing…</span>`;
-
-  function mountFileUploadPctUI(btn: HTMLButtonElement): { setPct: (n: number) => void } {
-    btn.innerHTML = `<span class="upload-progress-label" aria-live="polite">Uploading 0%</span>`;
-    const label = btn.querySelector<HTMLElement>('.upload-progress-label');
-    return {
-      setPct(n: number) {
-        const p = Math.max(0, Math.min(100, Math.round(n)));
-        if (label) label.textContent = `Uploading ${p}%`;
-        btn.style.background = `linear-gradient(90deg, var(--accent) 0%, var(--accent) ${p}%, rgba(10, 10, 10, 0.9) ${p}%, rgba(10, 10, 10, 0.9) 100%)`;
-      },
-    };
-  }
-
-  function putPresignedWithProgress(
-    uploadUrl: string,
-    file: File,
-    contentType: string,
-    onProgress: (pct: number) => void,
-  ): Promise<{ ok: boolean; status: number }> {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('PUT', uploadUrl);
-      xhr.setRequestHeader('Content-Type', contentType);
-      xhr.upload.onprogress = (e) => {
-        if (!e.lengthComputable || !e.total) return;
-        onProgress((100 * e.loaded) / e.total);
-      };
-      xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status });
-      xhr.onerror = () => reject(new Error('Network error'));
-      xhr.onabort = () => reject(new Error('Aborted'));
-      xhr.send(file);
-    });
-  }
-
-  btnFile.addEventListener('click', async () => {
-    const file = selectedFile;
-    if (!file) return;
-    if (file.size > maxUploadBytes) {
-      showResult(outFile, uploadTooLargeMsg, true);
-      return;
-    }
-    outFile.classList.remove('visible');
-    const orig = btnFile.innerHTML;
-    btnFile.disabled = true;
-    btnFile.classList.add('is-uploading');
-    btnFile.innerHTML = FILE_UPLOAD_PREP_HTML;
-    try {
-      const initRes = await fetch('/api/uploads/init', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type || 'application/octet-stream',
-          size: file.size,
-        }),
-      });
-      const init = (await initRes.json().catch(() => ({}))) as {
-        uploadUrl?: string;
-        r2Key?: string;
-        contentType?: string;
-        size?: number;
-        filename?: string;
-        error?: string;
-      };
-      if (!initRes.ok) {
-        showResult(outFile, init.error ?? initRes.statusText, true);
-        return;
-      }
-      const contentType = (init.contentType ?? file.type) || 'application/octet-stream';
-      const { setPct } = mountFileUploadPctUI(btnFile);
-      let last = -1;
-      const put = await putPresignedWithProgress(init.uploadUrl!, file, contentType, (raw) => {
-        const p = Math.min(100, raw);
-        if (p === last) return;
-        last = p;
-        setPct(p);
-      });
-      setPct(100);
-      if (!put.ok) {
-        showResult(outFile, `Upload failed (${put.status})`, true);
-        return;
-      }
-      const doneRes = await fetch('/api/uploads/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          r2Key: init.r2Key,
-          filename: init.filename ?? file.name,
-          contentType,
-          size: init.size ?? file.size,
-        }),
-      });
-      const done = (await doneRes.json().catch(() => ({}))) as {
-        shortUrl?: string;
-        error?: string;
-        detail?: string;
-        reason?: string;
-      };
-      if (!doneRes.ok) {
-        const base = done.error ?? doneRes.statusText;
-        const bits = [done.reason, done.detail].filter(Boolean);
-        showResult(outFile, bits.length ? `${base} — ${bits.join(' — ')}` : base, true);
-      } else {
-        setFile(null);
-        showResult(outFile, done.shortUrl ?? 'Created', false);
-      }
-    } catch {
-      showResult(outFile, 'Upload failed (network error)', true);
-    } finally {
-      btnFile.classList.remove('is-uploading');
-      btnFile.disabled = false;
-      btnFile.innerHTML = orig;
-      btnFile.style.removeProperty('background');
-    }
-  });
-  }
-</script>
-
 <style>
-  /* ── Hero ── */
   .hero {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    /* stretch: row height from the taller column; inner column centers the tool card */
-    align-items: stretch;
-  }
-
-  .hero-tool-column {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: stretch;
-    min-width: 0;
-    min-height: 0;
-    align-self: stretch;
-  }
-
-  .hero-copy {
-    padding: 5rem 4vw 4rem 6vw;
-    border-right: 1px solid var(--border);
-    position: sticky;
-    top: 52px;
-  }
-
-  .hero-kicker {
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    color: var(--muted);
-    letter-spacing: 0.04em;
-    margin: 0 0 2rem;
-  }
-
-  .hero-title {
-    font-family: var(--serif);
-    font-size: clamp(4.5rem, 9vw, 8rem);
-    font-weight: 700;
-    line-height: 0.92;
-    letter-spacing: -0.02em;
-    margin: 0 0 2.5rem;
-    color: var(--text);
-  }
-
-  .hero-sub {
-    font-size: 0.9rem;
-    color: var(--muted);
-    line-height: 1.75;
-    margin: 0 0 3rem;
-    border-left: 3px solid var(--accent);
-    padding-left: 1rem;
-    font-family: var(--mono);
-  }
-
-  .trust-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .trust-sep { color: var(--accent); }
-
-  /* ── Tool card ── */
-  .tool-card {
-    padding: 3.5rem 5vw 3rem 4vw;
-    display: flex;
-    flex-direction: column;
-    position: sticky;
-    top: 52px;
-  }
-
-  /* Tabs — equal halves so active underline matches tab width */
-  .seg-track {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 1.75rem;
-    /* Stay above .tool-panels so nothing (panels, grids, sr-only inputs) can eat clicks */
     position: relative;
-    z-index: 2;
-  }
-  .seg-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.6rem 0.5rem;
-    margin: 0;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    background: transparent;
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: color 0.1s, border-color 0.1s;
-  }
-  .seg-btn.active { color: var(--text); border-bottom-color: var(--accent); }
-  .seg-btn:hover:not(.active) { color: var(--text); }
-
-  /* Both panels share one grid cell so row height = max(LINK, FILE); hidden tab stays in layout */
-  .tool-panels {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 7vw, 5.5rem) clamp(1.25rem, 5vw, 3.5rem) clamp(3rem, 8vw, 6rem);
     display: grid;
-    grid-template-columns: 1fr;
-    position: relative;
-    z-index: 0;
-    align-self: stretch;
-    min-width: 0;
-    min-height: 0;
+    grid-template-columns: 1fr 0.85fr;
+    align-items: center;
+    gap: clamp(2rem, 6vw, 4rem);
   }
-
-  /* Desktop: hero row fills viewport under header so tool column can vertically center */
-  @media (min-width: 769px) {
-    .hero {
-      grid-template-rows: 1fr;
-      min-height: calc(100svh - 52px);
-    }
-
-    .hero-copy {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      min-height: 0;
-    }
-  }
-
-  .tool-panels > .tool-panel {
-    grid-column: 1;
-    grid-row: 1;
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-
-  .tool-panels > .tool-panel[aria-hidden='true'] {
-    visibility: hidden;
+  .hero-glow {
+    position: absolute;
+    top: -200px;
+    left: 55%;
+    transform: translateX(-50%);
+    width: 1100px;
+    max-width: 120vw;
+    height: 900px;
+    background: var(--glow);
     pointer-events: none;
-    user-select: none;
     z-index: 0;
   }
+  .hero-copy { position: relative; z-index: 1; }
 
-  .tool-panels > .tool-panel[aria-hidden='false'] {
-    visibility: visible;
-    z-index: 1;
-  }
-
-  /* URL form */
-  .url-form { display: flex; flex-direction: column; gap: 0.5rem; }
-
-
-  .submit-btn {
-    width: 100%;
-    justify-content: center;
-    padding: 0.85rem 1.25rem;
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
-  #btn-url.is-loading {
-    pointer-events: none;
-  }
-  #btn-url.is-loading:disabled,
-  #btn-url.is-loading:disabled:hover {
-    opacity: 1 !important;
-    cursor: wait;
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #0a0a0a;
-  }
-  #btn-url .btn-url-spin {
-    width: 1.05em;
-    height: 1.05em;
-    border: 2px solid rgba(0, 0, 0, 0.22);
-    border-top-color: #0a0a0a;
-    border-radius: 50%;
-    animation: btn-url-spin 0.65s linear infinite;
-    flex-shrink: 0;
-  }
-  #btn-url .btn-url-loading-text {
-    letter-spacing: 0.08em;
-  }
-
-  .file-upload-btn {
-    margin-top: 0;
-    width: 100%;
-  }
-
-  .file-upload-btn.is-uploading {
-    position: relative;
-    justify-content: center;
-    padding-top: 0.72rem;
-    padding-bottom: 0.72rem;
-    text-transform: none;
-    letter-spacing: 0.04em;
-    color: var(--text);
-  }
-
-  .file-upload-btn.is-uploading:disabled,
-  .file-upload-btn.is-uploading:disabled:hover {
-    opacity: 1 !important;
-    cursor: wait;
-    background: rgba(10, 10, 10, 0.9);
-    border-color: rgba(255, 229, 0, 0.45);
-    color: var(--text);
-  }
-
-  .upload-progress-label {
-    font-size: 0.74rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: var(--text);
-  }
-
-  @keyframes upload-bar-busy {
-    0% {
-      transform: translateX(-120%);
-    }
-    100% {
-      transform: translateX(320%);
-    }
-  }
-
-  /* Result */
-  .result-wrapper {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .result-wrapper:not(.visible) {
-    pointer-events: none;
-  }
-  .result-wrapper.visible { grid-template-rows: 1fr; }
-  .result-inner {
-    overflow: hidden;
-    min-height: 0;
-  }
-
-  @keyframes result-url-marker {
-    0% {
-      transform: scaleX(0);
-      opacity: 1;
-    }
-    38% {
-      transform: scaleX(1);
-      opacity: 1;
-    }
-    52% {
-      transform: scaleX(1);
-      opacity: 1;
-    }
-    78%,
-    100% {
-      transform: scaleX(1);
-      opacity: 0;
-    }
-  }
-
-  @keyframes result-url-reveal {
-    0%,
-    36% {
-      color: #0a0a0a;
-      font-size: 1rem;
-      font-weight: 600;
-    }
-    48%,
-    100% {
-      color: var(--accent);
-      font-size: 1.28rem;
-      font-weight: 600;
-    }
-  }
-
-  @keyframes result-copy-reveal {
-    0%,
-    38% {
-      color: #0a0a0a;
-      border-color: rgba(10, 10, 10, 0.35);
-    }
-    50%,
-    100% {
-      color: var(--muted);
-      border-color: var(--border);
-    }
-  }
-
-  @keyframes btn-url-spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .result-box {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 0.15rem;
-    padding: 1.25rem 0 0.25rem;
-    border-top: 1px solid var(--border);
-    margin-top: 1.25rem;
-  }
-
-  .result-hint {
-    margin: 0;
-    padding: 0;
-    font-size: 0.56rem;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    opacity: 0.9;
-    text-align: center;
-    line-height: 1.3;
-  }
-
-  .result-row {
+  .badge {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    max-width: 100%;
-  }
-
-  .result-box.err .result-row {
-    display: flex;
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .result-row.highlighted .result-url::before {
-    content: '';
-    position: absolute;
-    inset: 0.06em 0;
-    background: var(--accent);
-    transform: scaleX(0);
-    transform-origin: left center;
-    z-index: -1;
-    pointer-events: none;
-    animation: result-url-marker 2.2s ease-in-out forwards;
-  }
-
-  .result-box.err {
-    padding: 0.75rem;
-    border: 1px solid rgba(255, 68, 68, 0.35);
-    background: rgba(255, 68, 68, 0.05);
-    margin-top: 1rem;
-    animation: none;
-  }
-
-  .result-url {
-    flex: 0 1 auto;
-    max-width: min(100%, 52rem);
-    display: inline-block;
-    font-family: var(--mono);
-    font-size: 1rem;
-    font-weight: 500;
-    color: var(--accent);
-    text-decoration: none;
-    word-break: break-all;
-    min-width: 0;
-    position: relative;
-    isolation: isolate;
-    z-index: 0;
-    text-align: center;
-    vertical-align: middle;
-    transition: color 0.15s, font-size 0.15s;
-  }
-  .result-box.err .result-url {
-    flex: 1;
-    max-width: none;
-    text-align: left;
-    font-size: 0.82rem;
-    font-weight: 400;
-    color: var(--danger);
-  }
-  .result-row.highlighted .result-url {
-    animation: result-url-reveal 2.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    transition: none;
-  }
-  .result-url:hover { text-decoration: underline; }
-
-  .copy-btn {
-    flex-shrink: 0;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    transition: border-color 0.1s, color 0.1s, background 0.1s;
-    position: relative;
-    z-index: 1;
-  }
-  .result-row.highlighted .copy-btn {
-    animation: result-copy-reveal 2.2s ease forwards;
-  }
-  .copy-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(255,229,0,0.06); }
-
-  /* Drop zone */
-  .drop-zone {
-    border: 1px dashed var(--border);
-    padding: 3rem 1.5rem;
-    cursor: pointer;
-    text-align: center;
-    transition: border-color 0.1s, background 0.1s;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .drop-zone:hover, .drop-zone.drag-over {
-    border-color: var(--accent);
-    background: rgba(255, 229, 0, 0.03);
-  }
-
-  .dz-icon-wrap {
-    width: 40px;
-    height: 40px;
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--muted);
-    margin-bottom: 0.5rem;
-  }
-  .dz-label { margin: 0; font-size: 0.875rem; color: var(--text); font-weight: 600; }
-  .dz-hint { margin: 0; font-size: 0.75rem; color: var(--muted); font-family: var(--mono); }
-  .browse-text { color: var(--accent); cursor: pointer; }
-
-  [hidden] { display: none !important; }
-
-  /* File ready */
-  .file-ready {
-    display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-    padding: 0.75rem 0.85rem;
-    border: 1px solid var(--border);
-  }
-  .file-ready-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    min-width: 0;
-  }
-  .file-ready-icon {
-    flex-shrink: 0;
-    color: var(--muted);
-    opacity: 0.65;
-  }
-  .file-name-text {
-    flex: 1;
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-  }
-  .clear-btn {
-    flex-shrink: 0;
-    padding: 0.1rem 0.4rem;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    font-size: 0.9rem;
-    line-height: 1;
-    cursor: pointer;
-    transition: color 0.1s, border-color 0.1s;
-  }
-  .clear-btn:hover { color: var(--danger); border-color: rgba(255,68,68,0.4); }
-
-  /* ── Trust marquee ── */
-  .trust {
-    border-top: 1px solid var(--border);
-    padding: 2.5rem 0;
-    overflow: hidden;
-  }
-  .trust--hidden { display: none; }
-  .trust-label {
-    font-family: var(--mono);
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: var(--muted);
-    text-align: center;
-    margin: 0 0 1.5rem;
-  }
-  .marquee {
-    overflow: hidden;
-    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
-    mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
-  }
-  .marquee-track {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    width: max-content;
-    animation: marquee 35s linear infinite;
-  }
-  .marquee-track span {
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .marquee-track .sep {
-    font-weight: 400;
-    color: var(--accent);
-    opacity: 0.5;
-    font-size: 0.6rem;
-  }
-  @keyframes marquee {
-    0%   { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
-  .marquee:hover .marquee-track { animation-play-state: paused; }
-
-  /* ── Pricing ── */
-  .pricing {
-    border-top: 1px solid var(--border);
-    padding: 5rem 6vw;
-    text-align: center;
-  }
-  .pricing .pricing-grid { margin: 0 auto; }
-  .section-kicker {
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    color: var(--muted);
-    letter-spacing: 0.04em;
-    margin: 0 0 0.75rem;
-  }
-  .section-title {
-    font-family: var(--serif);
-    font-size: clamp(2rem, 4vw, 3rem);
-    font-weight: 700;
-    margin: 0 0 3rem;
-    letter-spacing: -0.01em;
-  }
-  .pricing-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    align-items: stretch;
-    max-width: 1080px;
-    border: 1px solid var(--border);
-  }
-  .plan {
-    padding: 2rem 1.75rem;
-    display: flex;
-    flex-direction: column;
-    min-height: 100%;
-  }
-  .pricing-grid .plan {
-    background: var(--surface);
-  }
-  .pricing-grid .plan:not(:first-child) {
-    border-left: 1px solid var(--border);
-  }
-  .plan-label {
-    font-family: var(--mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin: 0 0 1rem;
-  }
-  .plan-price {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: center;
-    gap: 0.35rem 0.55rem;
-    margin: 0 0 0.35rem;
-    min-height: 3.35rem;
-    box-sizing: content-box;
-  }
-  .price-value {
-    font-family: var(--serif);
-    font-size: 3rem;
-    font-weight: 700;
-    line-height: 1;
-    color: var(--text);
-  }
-  .price-value--accent {
-    color: var(--accent);
-  }
-  .price-period {
-    font-family: var(--mono);
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--muted);
-    letter-spacing: 0.04em;
-  }
-  .price-was {
-    font-family: var(--mono);
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: var(--muted);
-    text-decoration: line-through;
-  }
-  .plan.lifetime .price-was {
-    color: var(--text);
-  }
-  .price-once {
-    font-family: var(--mono);
-    font-size: 0.85rem;
+    gap: 9px;
     font-weight: 600;
-    color: var(--muted);
-    letter-spacing: 0.06em;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-soft);
+    padding: 9px 15px;
+    border-radius: var(--radius-pill);
   }
-  .plan-tagline {
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    color: var(--muted);
-    margin: 0 0 2rem;
-  }
-  .plan-features {
-    list-style: none;
-    padding: 0 0 2rem;
-    margin: 0;
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-  }
-  .plan-features li {
-    font-family: var(--mono);
-    font-size: 0.78rem;
+  .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+
+  .hero-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(2.6rem, 6vw, 3.9rem);
+    line-height: 1.04;
+    letter-spacing: -0.035em;
     color: var(--text);
+    margin: 1.5rem 0 0;
+  }
+  .hero-title .hl { color: var(--accent); }
+
+  .hero-sub {
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    line-height: 1.55;
+    color: var(--muted);
+    max-width: 28rem;
+    margin: 1.4rem 0 0;
+  }
+
+  .hero-actions { display: flex; flex-direction: column; gap: 0.85rem; align-items: flex-start; }
+  .hero-cta { margin-top: 2rem; padding: 0.9rem 1.6rem; font-size: 1rem; }
+  .hero-meta { margin: 0; font-size: 0.88rem; color: var(--muted); }
+  .hero-meta a { color: var(--accent); font-weight: 600; }
+
+  /* Claim bar */
+  .claim-bar {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    padding: 8px 8px 8px 18px;
+    max-width: 440px;
+    margin: 2.1rem 0 0;
   }
-  .plan-features li::before {
-    content: '✓';
-    color: var(--accent);
-    flex-shrink: 0;
-    font-size: 0.72rem;
-    line-height: 1;
+  .claim-bar:focus-within { border-color: var(--accent); }
+  .claim-bar-prefix { font-weight: 500; font-size: 1rem; color: var(--muted-3); white-space: nowrap; user-select: none; }
+  .claim-bar-input {
+    flex: 1; min-width: 0;
+    border: none !important; background: transparent;
+    padding: 0.55rem 0; font-weight: 600; font-size: 1rem;
+    box-shadow: none !important;
   }
-  .pricing .plan-cta {
-    width: 100%;
-    margin-top: auto;
-    box-sizing: border-box;
+  .claim-bar-input:focus { box-shadow: none !important; border: none !important; }
+  .claim-bar-btn { flex-shrink: 0; padding: 0.8rem 1.5rem; border-radius: 10px; }
+
+  .social-proof { display: flex; align-items: center; gap: 14px; margin-top: 1.75rem; }
+  .avatars { display: flex; }
+  .avatars span {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 2px solid var(--bg);
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 2.75rem;
-    padding: 0.65rem 1rem;
-    font-family: var(--mono);
-    font-size: 0.72rem;
+    font-family: var(--font-display);
     font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    line-height: 1;
-    background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--text);
-    cursor: pointer;
-    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    font-size: 0.8rem;
+    color: #fff;
   }
-  .pricing .plan-cta:hover {
-    background: rgba(255, 229, 0, 0.1);
-    border-color: var(--accent);
-    color: var(--text);
-  }
-  .pricing .plan-cta.btn-primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #000;
-    padding: 0.65rem 1rem;
-  }
-  .pricing .plan-cta.btn-primary:hover {
-    background: #fff176;
-    border-color: #fff176;
-    color: #000;
-  }
-  .pricing .plan-cta:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
+  .avatars span + span { margin-left: -12px; }
+  .social-proof-text { font-weight: 500; font-size: 0.86rem; color: var(--muted-2); }
 
-  /* ── FAQ ── */
-  .faq {
-    border-top: 1px solid var(--border);
-    padding: 5rem 6vw;
-    text-align: center;
+  /* ── Phone ── */
+  .hero-phone-wrap { position: relative; z-index: 1; display: flex; justify-content: center; }
+  .phone {
+    width: 286px;
+    height: 580px;
+    background: #0a0907;
+    border: 1px solid var(--border-hi);
+    border-radius: 42px;
+    padding: 11px;
+    box-shadow: var(--shadow-lg);
   }
-  .faq-list {
-    max-width: 700px;
-    margin: 0 auto;
-    text-align: left;
+  .phone-screen { height: 100%; background: var(--bg); border-radius: 31px; overflow: hidden; position: relative; }
+  .phone-notch { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 96px; height: 24px; background: #0a0907; border-radius: 14px; z-index: 2; }
+  .phone-cover { height: 144px; background: linear-gradient(180deg, rgba(16,15,13,0) 55%, var(--bg) 100%), linear-gradient(135deg, #f97316 0%, #d946ef 60%, #6d28d9 100%); }
+  .phone-head { text-align: center; margin-top: -36px; position: relative; padding: 0 18px; }
+  .phone-avatar { width: 66px; height: 66px; border-radius: 50%; margin: 0 auto; border: 3px solid var(--bg); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; color: #fff; }
+  .phone-name { font-family: var(--font-display); font-weight: 700; font-size: 19px; color: var(--text); margin-top: 11px; }
+  .phone-bio { font-weight: 500; font-size: 11px; color: var(--muted-2); margin-top: 7px; }
+  .phone-socials { display: flex; justify-content: center; gap: 8px; margin-top: 13px; }
+  .phone-socials span {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.14);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-weight: 700; font-size: 8px; color: #cfc9bf;
   }
-  .faq-item {
-    border-top: 1px solid var(--border);
+  .phone-featured { margin: 18px 18px 0; background: var(--accent); border-radius: var(--link-radius); padding: 13px 15px; }
+  .phone-featured-kicker { font-family: var(--font-mono); font-weight: 700; font-size: 8px; color: #fff; letter-spacing: 0.12em; text-transform: uppercase; }
+  .phone-featured-title { font-family: var(--font-display); font-weight: 700; font-size: 16px; color: #fff; margin-top: 7px; }
+  .phone-links { padding: 11px 18px 0; display: flex; flex-direction: column; gap: 9px; }
+  .phone-link {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--link-radius); padding: 13px 15px;
+    font-weight: 600; font-size: 12px; color: var(--text-dim);
   }
-  .faq-item:last-child { border-bottom: 1px solid var(--border); }
-  .faq-item summary {
-    font-family: var(--mono);
-    font-size: 0.875rem;
-    font-weight: 700;
-    padding: 1.25rem 0;
-    cursor: pointer;
-    list-style: none;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: var(--text);
-    gap: 1rem;
-  }
-  .faq-item summary::-webkit-details-marker { display: none; }
-  .faq-item summary::after {
-    content: '+';
-    color: var(--accent);
-    font-size: 1.25rem;
-    font-weight: 400;
-    font-family: var(--mono);
-    flex-shrink: 0;
-  }
-  .faq-item[open] summary::after { content: '−'; }
-  .faq-item p {
-    margin: 0 0 1.5rem;
-    font-family: var(--mono);
-    font-size: 0.82rem;
-    color: var(--muted);
-    line-height: 1.8;
-  }
-  .faq-item p strong { color: var(--text); font-weight: 700; }
+  .phone-link .arr { color: var(--muted-3); }
 
-  /* ── Responsive ── */
-  @media (max-width: 768px) {
-    .hero {
-      grid-template-columns: 1fr;
-      grid-template-rows: none;
-      min-height: auto;
-    }
-    .hero-tool-column {
-      justify-content: flex-start;
-    }
-    .hero-copy {
-      border-right: none;
-      border-bottom: 1px solid var(--border);
-      padding: 3rem 1.5rem 2.5rem;
-      position: static;
-    }
-    .tool-card { padding: 2rem 1.5rem; }
-    .pricing { padding: 3rem 1.5rem; }
-    .pricing-grid { grid-template-columns: 1fr; }
-    .pricing-grid .plan:not(:first-child) {
-      border-left: none;
-      border-top: 1px solid var(--border);
-    }
-    .faq { padding: 3rem 1.5rem; }
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; text-align: center; }
+    .hero-copy { display: flex; flex-direction: column; align-items: center; }
+    .hero-sub { margin-left: auto; margin-right: auto; }
+    .hero-actions { align-items: center; }
+    .badge { align-self: center; }
+    .hero-phone-wrap { order: -1; }
+    .hero-glow { top: -300px; }
   }
 </style>

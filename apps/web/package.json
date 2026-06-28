@@ -6,7 +6,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "astro dev",
+    "dev": "astro dev --host 127.0.0.1",
     "build": "astro build",
     "check": "astro check",
     "deploy": "astro build && wrangler deploy",
@@ -15,9 +15,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply thelnk --remote",
     "preview": "astro preview",
     "astro": "astro",
-    "generate-types": "wrangler types --include-runtime=false",
-    "wall-of-fame:build": "bun run ../../scripts/build-wall-of-fame.ts",
-    "wall-of-fame:previews": "bun run ../../scripts/refresh-wall-previews.ts"
+    "generate-types": "wrangler types --include-runtime=false"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.5.0",

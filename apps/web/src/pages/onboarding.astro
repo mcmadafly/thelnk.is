@@ -1,0 +1,219 @@
+---
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+export const prerender = false;
+
+let clerkUserId: string | null = null;
+try {
+  clerkUserId = (await Astro.locals.auth()).userId ?? null;
+} catch {
+  clerkUserId = null;
+}
+
+if (!clerkUserId) {
+  return Astro.redirect('/sign-up');
+}
+
+const existing = await env.DB.prepare(`SELECT username FROM profiles WHERE clerk_user_id = ?`)
+  .bind(clerkUserId)
+  .first<{ username: string }>();
+if (existing) {
+  return Astro.redirect('/dashboard');
+}
+
+const host = env.PUBLIC_APP_ORIGIN.replace(/\/+$/, '').replace(/^https?:\/\//, '');
+const prefill = (Astro.url.searchParams.get('u') ?? '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30);
+---
+
+<BaseLayout title="Claim your username · thelnk.is" description="Claim your thelnk.is username and create your page.">
+  <section class="claim">
+    <div class="claim-glow" aria-hidden="true"></div>
+    <div class="claim-card">
+      <p class="claim-step">Step 1 of 1</p>
+      <h1 class="claim-title">Claim your username</h1>
+      <p class="claim-sub">This becomes your public page. You can change everything else later.</p>
+
+      <form id="claim-form" class="claim-form" novalidate>
+        <div class="claim-input-wrap">
+          <span class="claim-prefix">{host}/</span>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            placeholder="yourname"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            value={prefill}
+            required
+          />
+        </div>
+        <p id="claim-status" class="claim-status" aria-live="polite"></p>
+        <button type="submit" id="claim-btn" class="btn-primary claim-submit">Claim it →</button>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById('claim-form') as HTMLFormElement | null;
+  const input = document.getElementById('username') as HTMLInputElement | null;
+  const statusEl = document.getElementById('claim-status');
+  const btn = document.getElementById('claim-btn') as HTMLButtonElement | null;
+
+  if (form && input && statusEl && btn) {
+    let debounce: number | undefined;
+    let lastChecked = '';
+
+    function setStatus(text: string, state: 'ok' | 'err' | 'muted') {
+      statusEl!.textContent = text;
+      statusEl!.dataset.state = state;
+    }
+
+    async function check(value: string) {
+      if (value === lastChecked) return;
+      lastChecked = value;
+      try {
+        const res = await fetch(`/api/profile/availability?username=${encodeURIComponent(value)}`);
+        const data = (await res.json()) as { available?: boolean; reason?: string };
+        if (data.available) setStatus(`✓ ${value} is available`, 'ok');
+        else setStatus(data.reason ?? 'That username is taken.', 'err');
+      } catch {
+        setStatus('Could not check availability.', 'err');
+      }
+    }
+
+    input.addEventListener('input', () => {
+      const value = input.value.trim().toLowerCase();
+      window.clearTimeout(debounce);
+      if (!value) { setStatus('', 'muted'); return; }
+      setStatus('Checking…', 'muted');
+      debounce = window.setTimeout(() => check(value), 350);
+    });
+
+    // Restore a username typed on the homepage before the sign-up round-trip.
+    if (!input.value.trim()) {
+      try {
+        const pending = localStorage.getItem('thelnk_pending_username');
+        if (pending) input.value = pending;
+      } catch {}
+    }
+    if (input.value.trim()) {
+      const v = input.value.trim().toLowerCase();
+      setStatus('Checking…', 'muted');
+      check(v);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const value = input.value.trim().toLowerCase();
+      if (!value) { input.focus(); return; }
+      btn.disabled = true;
+      setStatus('Claiming…', 'muted');
+      try {
+        const res = await fetch('/api/profile/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: value }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { username?: string; error?: string; reason?: string };
+        if (res.ok) {
+          try { localStorage.removeItem('thelnk_pending_username'); } catch {}
+          window.location.href = '/dashboard';
+          return;
+        }
+        setStatus(data.reason ?? data.error ?? `Failed (${res.status})`, 'err');
+      } catch {
+        setStatus('Network error — try again.', 'err');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+</script>
+
+<style>
+  .claim {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding: clamp(2.5rem, 8vw, 5rem) 1.25rem;
+  }
+  .claim-glow {
+    position: absolute;
+    top: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 760px;
+    max-width: 110vw;
+    height: 520px;
+    background: var(--glow);
+    pointer-events: none;
+  }
+  .claim-card {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: clamp(1.75rem, 5vw, 2.5rem);
+  }
+  .claim-step {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+    margin: 0 0 0.7rem;
+  }
+  .claim-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 4vw, 2.1rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.5rem;
+  }
+  .claim-sub { font-size: 0.92rem; color: var(--muted); margin: 0 0 1.75rem; }
+  .claim-form { display: flex; flex-direction: column; gap: 0.85rem; }
+  .claim-input-wrap {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .claim-input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(249,115,22,.12); }
+  .claim-prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 0.15rem 0 0.95rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--muted-3);
+    white-space: nowrap;
+    user-select: none;
+  }
+  .claim-input-wrap input {
+    flex: 1;
+    border: none !important;
+    background: transparent;
+    box-shadow: none !important;
+    padding-left: 0.1rem;
+    font-weight: 600;
+  }
+  .claim-input-wrap input:focus { box-shadow: none !important; }
+  .claim-status {
+    margin: 0;
+    min-height: 1.15rem;
+    font-size: 0.84rem;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .claim-status[data-state='ok'] { color: var(--success); }
+  .claim-status[data-state='err'] { color: var(--danger); }
+  .claim-submit { width: 100%; padding: 0.85rem; font-size: 1rem; margin-top: 0.25rem; }
+</style>

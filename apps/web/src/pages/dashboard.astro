@@ -1,29 +1,8 @@
 ---
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import LinkAnalyticsBars from '../components/LinkAnalyticsBars.astro';
-import { effectiveIsPremiumClerkUser } from '../lib/plan';
 
 export const prerender = false;
-
-type DashboardRow = {
-  slug: string;
-  type: 'url' | 'file';
-  target_url: string | null;
-  original_filename: string | null;
-  mime: string | null;
-  size_bytes: number;
-  created_at: number;
-  use_count: number;
-  max_uses: number;
-  last_used_at: number | null;
-};
-
-type AnalyticsRow = {
-  slug: string;
-  day_start: number;
-  hits: number;
-};
 
 let clerkUserId: string | null = null;
 try {
@@ -36,247 +15,59 @@ if (!clerkUserId) {
   return Astro.redirect('/sign-in');
 }
 
-const isPro = await effectiveIsPremiumClerkUser(clerkUserId);
-const shortOrigin = env.PUBLIC_SHORT_ORIGIN.replace(/\/+$/, '');
-
-const data = await env.DB.prepare(
-  `SELECT slug, type, target_url, original_filename, mime, size_bytes, created_at, use_count, max_uses, last_used_at
-   FROM links
-   WHERE clerk_user_id = ?
-   ORDER BY created_at DESC
-   LIMIT 250`,
+const profile = await env.DB.prepare(
+  `SELECT username, display_name FROM profiles WHERE clerk_user_id = ?`,
 )
   .bind(clerkUserId)
-  .all<DashboardRow>();
+  .first<{ username: string; display_name: string | null }>();
 
-const items = data.results ?? [];
-const totalItems = items.length;
-const totalUrls = items.filter((x) => x.type === 'url').length;
-const totalFiles = totalItems - totalUrls;
-const totalUses = items.reduce((sum, item) => sum + (item.use_count ?? 0), 0);
-
-const dayCount = 14;
-const daySec = 86400;
-const now = new Date();
-const todayUtcStartSec = Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 1000);
-const dayStarts = Array.from({ length: dayCount }, (_, i) => todayUtcStartSec - ((dayCount - 1 - i) * daySec));
-const dayIndex = new Map<number, number>(dayStarts.map((x, i) => [x, i]));
-const analyticsBySlug = new Map<string, number[]>();
-
-for (const item of items) {
-  analyticsBySlug.set(item.slug, Array(dayCount).fill(0));
+if (!profile) {
+  return Astro.redirect('/onboarding');
 }
 
-if (isPro && items.length) {
-  const sinceSec = dayStarts[0]!;
-  const slugs = items.map((x) => x.slug);
-  const placeholders = slugs.map(() => '?').join(', ');
-  const rows = await env.DB.prepare(
-    `SELECT slug,
-            CAST(strftime('%s', date(occurred_at, 'unixepoch')) AS INTEGER) AS day_start,
-            COUNT(*) AS hits
-     FROM link_events
-     WHERE slug IN (${placeholders}) AND occurred_at >= ?
-     GROUP BY slug, day_start`,
-  )
-    .bind(...slugs, sinceSec)
-    .all<AnalyticsRow>();
-
-  for (const row of rows.results ?? []) {
-    const idx = dayIndex.get(row.day_start);
-    const vec = analyticsBySlug.get(row.slug);
-    if (idx == null || !vec) continue;
-    vec[idx] = row.hits;
-  }
-}
-
-const overallPoints = Array(dayCount).fill(0);
-for (const points of analyticsBySlug.values()) {
-  for (let i = 0; i < dayCount; i++) overallPoints[i] += points[i] ?? 0;
-}
-const overallTotal = overallPoints.reduce((sum, n) => sum + n, 0);
-
-function formatDate(ts: number | null): string {
-  if (!ts) return '—';
-  return new Date(ts * 1000).toLocaleString();
-}
-
-function formatBytes(n: number): string {
-  if (!Number.isFinite(n) || n <= 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let value = n;
-  let i = 0;
-  while (value >= 1024 && i < units.length - 1) {
-    value /= 1024;
-    i += 1;
-  }
-  const fixed = value >= 10 || i === 0 ? 0 : 1;
-  return `${value.toFixed(fixed)} ${units[i]}`;
-}
+const origin = env.PUBLIC_APP_ORIGIN.replace(/\/+$/, '');
+const publicUrl = `${origin}/${profile.username}`;
+const publicUrlDisplay = publicUrl.replace(/^https?:\/\//, '');
 ---
 
 <BaseLayout title="Dashboard · thelnk.is">
-  <section class="dash-wrap">
+  <section class="dash">
     <header class="dash-head">
-      <div>
-        <p class="dash-kicker">Account dashboard</p>
-        <h1>Your links and files</h1>
-        <p class="dash-sub">
-          Plan:
-          <strong>{isPro ? 'Pro' : 'Free'}</strong>
-          {isPro
-            ? ' — delete + analytics charts enabled.'
-            : ' — upgrade to unlock delete and analytics graphs.'}
-        </p>
-      </div>
-      {!isPro && (
-        <a href="/#pricing" class="dash-upgrade-btn">Upgrade to Pro</a>
-      )}
+      <p class="dash-kicker">Your page is live</p>
+      <h1>thelnk<span class="dot">.is</span>/{profile.username}</h1>
     </header>
 
-    <div class="dash-stats">
-      <article class="dash-stat"><span>Total items</span><strong>{totalItems}</strong></article>
-      <article class="dash-stat"><span>URLs</span><strong>{totalUrls}</strong></article>
-      <article class="dash-stat"><span>Files</span><strong>{totalFiles}</strong></article>
-      <article class="dash-stat"><span>Total usage</span><strong>{totalUses}</strong></article>
+    <div class="dash-card">
+      <span class="dash-label">Public link</span>
+      <div class="dash-link-row">
+        <a class="dash-link-url" href={`/${profile.username}`}>{publicUrlDisplay}</a>
+        <button id="copy-url" type="button" class="dash-copy" data-url={publicUrl}>Copy</button>
+      </div>
+      <a class="btn-primary dash-view" href={`/${profile.username}`} target="_blank" rel="noopener noreferrer">View public page ↗</a>
     </div>
 
-    <div class="dash-summary-panel">
-      <div>
-        <p class="dash-summary-kicker">Summary performance</p>
-        <h2>All links and files</h2>
-      </div>
-      <LinkAnalyticsBars
-        points={overallPoints}
-        total={overallTotal}
-        periodLabel="14d"
-        locked={!isPro}
-      />
+    <div class="dash-card">
+      <span class="dash-label">Coming soon</span>
+      <ul class="dash-soon">
+        <li>Add &amp; reorder your links</li>
+        <li>Upload a profile photo &amp; cover</li>
+        <li>Edit your display name &amp; bio</li>
+        <li>Sell products, tickets &amp; tips</li>
+      </ul>
     </div>
-
-    {items.length === 0 ? (
-      <div class="dash-empty">
-        <p>You have not created any links yet.</p>
-        <a href="/" class="dash-home-link">Create your first link</a>
-      </div>
-    ) : (
-      <div class="dash-table-wrap">
-        <table class="dash-table">
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Destination</th>
-              <th>Created</th>
-              <th>Usage</th>
-              <th>Analytics</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => {
-              const shortUrl = `${shortOrigin}/${item.slug}`;
-              const points = analyticsBySlug.get(item.slug) ?? Array(dayCount).fill(0);
-              const analyticsTotal = points.reduce((sum, n) => sum + n, 0);
-              const usage =
-                isPro || item.max_uses < 0
-                  ? `${item.use_count} uses`
-                  : `${item.use_count} / ${item.max_uses} uses`;
-              return (
-                <tr
-                  class="dash-row"
-                  data-slug={item.slug}
-                  data-detail-href={`/dashboard/${item.slug}`}
-                  tabindex="0"
-                  role="link"
-                >
-                  <td class="dash-type">{item.type === 'file' ? 'File' : 'URL'}</td>
-                  <td class="dash-destination">
-                    <a href={shortUrl} target="_blank" rel="noopener noreferrer">{shortUrl}</a>
-                    {item.type === 'file' ? (
-                      <p>{item.original_filename ?? 'download.bin'} · {formatBytes(item.size_bytes)}</p>
-                    ) : (
-                      <p>{item.target_url ?? '—'}</p>
-                    )}
-                  </td>
-                  <td>{formatDate(item.created_at)}</td>
-                  <td>{usage}</td>
-                  <td>
-                    <LinkAnalyticsBars points={points} total={analyticsTotal} locked={!isPro} />
-                  </td>
-                  <td>
-                    {isPro ? (
-                      <button
-                        class="dash-delete-btn"
-                        type="button"
-                        data-slug={item.slug}
-                        aria-label="Delete item"
-                        title="Delete item"
-                      >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M3 6h18" />
-                          <path d="M8 6V4h8v2" />
-                          <path d="M19 6l-1 14H6L5 6" />
-                          <path d="M10 11v6" />
-                          <path d="M14 11v6" />
-                        </svg>
-                      </button>
-                    ) : (
-                      <a href="/#pricing" class="dash-upgrade-link">Upgrade to delete</a>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    )}
   </section>
 
   <script is:inline>
     (function () {
-      document.querySelectorAll('.dash-row').forEach(function (row) {
-        var href = row.getAttribute('data-detail-href');
-        if (!href) return;
-        row.addEventListener('click', function (e) {
-          var target = e.target;
-          if (target && target.closest && target.closest('a,button')) return;
-          window.location.href = href;
-        });
-        row.addEventListener('keydown', function (e) {
-          if (e.key !== 'Enter' && e.key !== ' ') return;
-          var target = e.target;
-          if (target && target.closest && target.closest('a,button')) return;
-          e.preventDefault();
-          window.location.href = href;
-        });
-      });
-
-      document.querySelectorAll('.dash-delete-btn').forEach(function (btn) {
-        btn.addEventListener('click', async function () {
-          var slug = btn.getAttribute('data-slug');
-          if (!slug) return;
-          if (!confirm('Delete this item permanently?')) return;
+      var btn = document.getElementById('copy-url');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        var url = btn.getAttribute('data-url') || '';
+        if (!navigator.clipboard) return;
+        navigator.clipboard.writeText(url).then(function () {
           var prev = btn.textContent;
-          btn.setAttribute('disabled', 'true');
-          btn.textContent = 'Deleting...';
-          try {
-            var res = await fetch('/api/dashboard/links/' + encodeURIComponent(slug), { method: 'DELETE' });
-            if (!res.ok) {
-              var data = await res.json().catch(function () { return {}; });
-              alert(data && data.error ? data.error : 'Delete failed');
-              btn.removeAttribute('disabled');
-              btn.textContent = prev || 'Delete';
-              return;
-            }
-            var row = btn.closest('tr');
-            if (row) row.remove();
-            window.location.reload();
-          } catch (_) {
-            alert('Delete failed (network error)');
-            btn.removeAttribute('disabled');
-            btn.textContent = prev || 'Delete';
-          }
+          btn.textContent = 'Copied!';
+          setTimeout(function () { btn.textContent = prev || 'Copy'; }, 1600);
         });
       });
     })();
@@ -284,204 +75,46 @@ function formatBytes(n: number): string {
 </BaseLayout>
 
 <style>
-  .dash-wrap {
-    max-width: 1120px;
-    margin: 1.75rem auto 2.5rem;
-    padding: 0 1.25rem;
-  }
-  .dash-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-end;
-    margin-bottom: 1rem;
-  }
+  .dash { max-width: 600px; margin: 0 auto; padding: clamp(2rem, 6vw, 3.5rem) 1.25rem; }
+  .dash-head { margin-bottom: 1.5rem; }
   .dash-kicker {
     margin: 0;
-    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 0.7rem;
+    color: var(--accent);
   }
   .dash-head h1 {
-    margin: 0.2rem 0;
-    font-size: clamp(1.1rem, 2.6vw, 1.55rem);
-  }
-  .dash-sub {
-    margin: 0;
-    color: var(--muted);
-    font-size: 0.78rem;
-  }
-  .dash-sub strong {
-    color: var(--text);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .dash-upgrade-btn {
-    border: 1px solid var(--accent);
-    color: #000;
-    background: var(--accent);
-    text-decoration: none;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 0.72rem;
+    margin: 0.45rem 0 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 4vw, 2.1rem);
     font-weight: 700;
-    padding: 0.48rem 0.8rem;
-    line-height: 1.2;
-    white-space: nowrap;
+    letter-spacing: -0.02em;
   }
-  .dash-upgrade-btn:hover {
-    text-decoration: none;
-    background: #fff176;
-    border-color: #fff176;
-  }
-  .dash-stats {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.7rem;
-    margin-bottom: 1rem;
-  }
-  .dash-stat {
-    border: 1px solid var(--border);
+  .dash-head .dot { color: var(--accent); }
+  .dash-card {
     background: var(--surface);
-    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 1.35rem 1.45rem;
+    margin-bottom: 1.1rem;
   }
-  .dash-stat span {
+  .dash-label {
     display: block;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 0.66rem;
-  }
-  .dash-stat strong {
-    display: block;
-    margin-top: 0.18rem;
-    font-size: 1.15rem;
-  }
-  .dash-empty {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    padding: 1.2rem;
-  }
-  .dash-empty p {
-    margin: 0 0 0.55rem;
-  }
-  .dash-home-link {
-    font-size: 0.82rem;
-  }
-  .dash-summary-panel {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    padding: 0.7rem 0.85rem;
-    margin-bottom: 0.9rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.8rem;
-  }
-  .dash-summary-kicker {
-    margin: 0;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 0.64rem;
-  }
-  .dash-summary-panel h2 {
-    margin: 0.2rem 0 0;
-    font-size: 0.92rem;
-  }
-  .dash-table-wrap {
-    border: 1px solid var(--border);
-    overflow: auto;
-    background: var(--surface);
-  }
-  .dash-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 980px;
-  }
-  .dash-table th,
-  .dash-table td {
-    border-bottom: 1px solid var(--border);
-    text-align: left;
-    vertical-align: top;
-    padding: 0.66rem 0.7rem;
-    font-size: 0.76rem;
-  }
-  .dash-row {
-    cursor: pointer;
-  }
-  .dash-row:hover td {
-    background: rgba(255, 255, 255, 0.03);
-  }
-  .dash-row:focus-visible {
-    outline: 1px solid rgba(255, 229, 0, 0.65);
-    outline-offset: -1px;
-  }
-  .dash-table th {
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.66rem;
-    font-weight: 700;
-    background: rgba(255, 255, 255, 0.01);
-  }
-  .dash-type {
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 0.66rem;
-    color: var(--muted);
-    white-space: nowrap;
-  }
-  .dash-destination a {
-    color: var(--accent);
-    word-break: break-all;
-  }
-  .dash-destination p {
-    margin: 0.22rem 0 0;
-    color: var(--muted);
-    line-height: 1.35;
-    word-break: break-all;
-  }
-  .dash-delete-btn {
-    border: 1px solid rgba(255, 68, 85, 0.5);
-    color: #ff7a85;
-    background: transparent;
-    padding: 0.32rem;
-    width: 1.85rem;
-    height: 1.85rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .dash-delete-btn:hover {
-    border-color: #ff7a85;
-    background: rgba(255, 68, 85, 0.12);
-  }
-  .dash-delete-btn svg {
-    width: 0.95rem;
-    height: 0.95rem;
-    stroke: currentColor;
-    fill: none;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-  .dash-upgrade-link {
-    color: var(--accent);
+    font-family: var(--font-mono);
     font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted-3);
+    margin-bottom: 0.85rem;
   }
-  @media (max-width: 860px) {
-    .dash-head {
-      align-items: flex-start;
-      flex-direction: column;
-    }
-    .dash-stats {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .dash-summary-panel {
-      align-items: flex-start;
-      flex-direction: column;
-    }
-  }
+  .dash-link-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.1rem; }
+  .dash-link-url { flex: 1; font-weight: 700; font-size: 1.05rem; color: var(--text); word-break: break-all; }
+  .dash-link-url:hover { color: var(--accent); }
+  .dash-copy { flex-shrink: 0; padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 600; }
+  .dash-view { width: 100%; padding: 0.8rem; }
+  .dash-soon { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.65rem; }
+  .dash-soon li { font-size: 0.95rem; color: var(--muted); display: flex; align-items: center; gap: 0.65rem; }
+  .dash-soon li::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
 </style>

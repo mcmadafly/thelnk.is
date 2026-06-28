@@ -1,0 +1,252 @@
+---
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SocialIcon from '../components/SocialIcon.astro';
+import { validateUsername } from '../lib/username';
+import { avatarBackground, avatarInitial } from '../lib/avatar';
+
+export const prerender = false;
+
+type ProfileRow = {
+  id: number;
+  username: string;
+  display_name: string | null;
+  bio: string | null;
+  avatar_r2_key: string | null;
+  theme: string;
+  socials: string | null;
+};
+
+type ProfileLinkRow = { title: string; url: string; is_featured: number };
+type Social = { name: string; url: string };
+
+// Defense in depth: reserved/invalid segment can never resolve a profile.
+const check = validateUsername(Astro.params.username ?? '');
+if (!check.ok) {
+  return new Response('Not found', { status: 404 });
+}
+
+const profile = await env.DB.prepare(
+  `SELECT id, username, display_name, bio, avatar_r2_key, theme, socials
+   FROM profiles WHERE username = ? COLLATE NOCASE`,
+)
+  .bind(check.username)
+  .first<ProfileRow>();
+
+if (!profile) {
+  return new Response('Not found', { status: 404 });
+}
+
+const linksResult = await env.DB.prepare(
+  `SELECT title, url, is_featured FROM profile_links
+   WHERE profile_id = ? AND is_visible = 1
+   ORDER BY is_featured DESC, sort_order ASC, id ASC`,
+)
+  .bind(profile.id)
+  .all<ProfileLinkRow>();
+
+const allLinks = linksResult.results ?? [];
+const featured = allLinks.filter((l) => l.is_featured);
+const links = allLinks.filter((l) => !l.is_featured);
+
+let socials: Social[] = [];
+if (profile.socials) {
+  try {
+    const parsed = JSON.parse(profile.socials);
+    if (Array.isArray(parsed)) {
+      socials = parsed.filter((s) => s && typeof s.name === 'string' && typeof s.url === 'string');
+    }
+  } catch { /* ignore malformed socials */ }
+}
+
+const displayName = profile.display_name?.trim() || profile.username;
+const initial = avatarInitial(displayName);
+const avatarBg = avatarBackground(profile.username);
+// avatar_r2_key holds a direct image URL/path for now (e.g. /demo/maya.jpg). R2-served keys come later.
+const avatarSrc = profile.avatar_r2_key && /^(https?:)?\//.test(profile.avatar_r2_key) ? profile.avatar_r2_key : null;
+const pageTitle = `${displayName} · thelnk.is`;
+const pageDesc = profile.bio?.trim() || `${displayName} on thelnk.is`;
+---
+
+<BaseLayout title={pageTitle} description={pageDesc} bareFooter={true} bareHeader={true}>
+  <section class="bio">
+    <div class="bio-cover" aria-hidden="true"></div>
+
+    <div class="bio-inner">
+      <div class="bio-avatar" style={avatarSrc ? `background:url('${avatarSrc}') center/cover no-repeat` : `background:${avatarBg}`}>
+        {!avatarSrc && initial}
+      </div>
+      <h1 class="bio-name">{displayName}</h1>
+      <div class="bio-handle">@{profile.username}</div>
+      {profile.bio?.trim() && <p class="bio-text">{profile.bio}</p>}
+
+      {socials.length > 0 && (
+        <div class="bio-socials">
+          {socials.map((s) => (
+            <a class="bio-social" href={s.url} target="_blank" rel="noopener noreferrer nofollow" aria-label={s.name}>
+              <SocialIcon name={s.name} size={17} />
+            </a>
+          ))}
+        </div>
+      )}
+
+      {featured.map((link) => (
+        <a class="bio-featured" href={link.url} target="_blank" rel="noopener noreferrer nofollow">
+          <span class="bio-featured-kicker">Featured</span>
+          <span class="bio-featured-title">{link.title}</span>
+        </a>
+      ))}
+
+      {links.length === 0 && featured.length === 0 ? (
+        <div class="bio-empty">
+          <p class="bio-empty-title">No links yet</p>
+          <p class="bio-empty-sub">This page is just getting started.</p>
+        </div>
+      ) : (
+        <nav class="bio-links" aria-label="Links">
+          {links.map((link) => (
+            <a class="bio-link" href={link.url} target="_blank" rel="noopener noreferrer nofollow">
+              <span>{link.title}</span>
+              <span class="bio-link-arr" aria-hidden="true">↗</span>
+            </a>
+          ))}
+        </nav>
+      )}
+
+      <a class="bio-footer" href="/">Join {profile.username} on thelnk<span class="dot">.is</span></a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .bio {
+    position: relative;
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    padding-bottom: 3rem;
+  }
+  /* Full-bleed gradient cover — matches the homepage phone mockup */
+  .bio-cover {
+    height: 200px;
+    background: linear-gradient(180deg, rgba(16,15,13,0) 55%, var(--bg) 100%), linear-gradient(135deg, #f97316 0%, #d946ef 60%, #6d28d9 100%);
+  }
+  .bio-inner {
+    padding: 0 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .bio-avatar {
+    width: 104px;
+    height: 104px;
+    margin-top: -56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 4px solid var(--bg);
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 2.6rem;
+  }
+  .bio-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.9rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin: 1rem 0 0;
+  }
+  .bio-handle { font-weight: 600; font-size: 0.95rem; color: var(--accent); margin-top: 0.4rem; }
+  .bio-text {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--muted);
+    max-width: 320px;
+    margin: 0.9rem 0 0;
+  }
+
+  .bio-socials { display: flex; gap: 12px; margin-top: 1.4rem; }
+  .bio-social {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--border-hi);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    transition: border-color 0.12s, background 0.12s, transform 0.12s;
+  }
+  .bio-social:hover { border-color: var(--accent); color: #fff; background: rgba(249,115,22,0.12); transform: translateY(-2px); }
+
+  /* Featured orange card */
+  .bio-featured {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 1.75rem;
+    padding: 18px 20px;
+    border-radius: var(--link-radius);
+    background: var(--accent);
+    box-shadow: 0 12px 30px -12px rgba(249,115,22,0.5);
+    text-align: left;
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  .bio-featured:hover { transform: translateY(-2px); box-shadow: 0 16px 36px -12px rgba(249,115,22,0.6); text-decoration: none; }
+  .bio-featured-kicker { font-family: var(--font-mono); font-weight: 700; font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.85); }
+  .bio-featured-title { font-family: var(--font-display); font-weight: 700; font-size: 1.25rem; color: #fff; }
+
+  .bio-links {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin-top: 12px;
+  }
+  .bio-links:first-of-type { margin-top: 1.75rem; }
+  .bio-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--link-radius);
+    padding: 17px 18px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-dim);
+    transition: transform 0.12s, border-color 0.12s, background 0.12s;
+  }
+  .bio-link:hover { transform: translateY(-2px); border-color: var(--border-hi); background: var(--surface-2); text-decoration: none; }
+  .bio-link-arr { color: var(--muted-3); flex-shrink: 0; }
+  .bio-link:hover .bio-link-arr { color: var(--text-dim); }
+
+  .bio-empty {
+    margin-top: 1.75rem;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px dashed var(--border-hi);
+    border-radius: var(--radius);
+    padding: 2rem 1.25rem;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .bio-empty-title { margin: 0; font-weight: 700; color: var(--text); }
+  .bio-empty-sub { margin: 0.4rem 0 0; font-size: 0.88rem; color: var(--muted-2); }
+
+  .bio-footer {
+    margin-top: 2.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--muted-3);
+  }
+  .bio-footer .dot { color: var(--accent); }
+  .bio-footer:hover { color: var(--muted); text-decoration: none; }
+</style>

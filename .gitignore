@@ -5,3 +5,8 @@ dist/
 !.env.example
 .DS_Store
 .wrangler/
+graphify-out/
+apps/web/large-file-*.txt
+raw/
+.serena/
+.claude/worktrees/
