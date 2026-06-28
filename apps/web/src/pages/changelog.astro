@@ -1,0 +1,101 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Public, user-facing changelog — newest version first.
+const releases = [
+  {
+    version: 'v0.1',
+    date: 'June 28, 2026',
+    tagline: 'The launch. thelnk.is is now a link-in-bio.',
+    items: [
+      'Claim your username — grab thelnk.is/you in one click, right from the homepage.',
+      'Public profile pages — avatar, bio, social icons, a featured link, and link buttons.',
+      'A fresh look — dark theme, new typography, orange everywhere.',
+    ],
+  },
+];
+---
+
+<BaseLayout title="Changelog · thelnk.is" description="What's new on thelnk.is, by version.">
+  <article class="legal">
+    <h1>Changelog</h1>
+    <p class="lead">What's new on thelnk.is — newest first.</p>
+
+    {releases.map((rel) => (
+      <section class="rel">
+        <div class="rel-head">
+          <span class="rel-version">{rel.version}</span>
+          <span class="rel-date">{rel.date}</span>
+        </div>
+        <p class="rel-tagline">{rel.tagline}</p>
+        <ul class="rel-items">
+          {rel.items.map((item) => <li>{item}</li>)}
+        </ul>
+      </section>
+    ))}
+
+    <p class="back"><a href="/">← Back home</a></p>
+  </article>
+</BaseLayout>
+
+<style>
+  .legal {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 6vw, 4rem) 1.5rem 4rem;
+    color: var(--muted);
+  }
+  .legal h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 2.6rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin: 0 0 0.4rem;
+  }
+  .legal .lead {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: var(--muted-2);
+    margin: 0 0 2.5rem;
+  }
+  .rel {
+    border-top: 1px solid var(--border);
+    padding: 1.75rem 0 0.5rem;
+  }
+  .rel-head { display: flex; align-items: baseline; gap: 0.85rem; }
+  .rel-version {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: var(--text);
+  }
+  .rel-date {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--muted-3);
+  }
+  .rel-tagline { margin: 0.6rem 0 1rem; color: var(--text-dim); font-size: 0.98rem; }
+  .rel-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; }
+  .rel-items li {
+    position: relative;
+    padding-left: 1.2rem;
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+  .rel-items li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .legal a { color: var(--accent); }
+  .legal a:hover { text-decoration: underline; }
+  .back { margin-top: 2.5rem; }
+</style>
