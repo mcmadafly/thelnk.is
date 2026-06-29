@@ -1,0 +1,18 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getAdminProfile } from '../../lib/admin-auth';
+import { mediaUrl } from '../../lib/media';
+import Card from '../../components/ui/Card.astro';
+import Icon from '../../components/ui/Icon.astro';
+
+export const prerender = false;
+const prof = await getAdminProfile(Astro.locals);
+if (!prof) return Astro.redirect('/onboarding');
+---
+<AdminLayout title="Media kit" active="media" username={prof.username} avatarSrc={mediaUrl(prof.avatar_r2_key)}>
+  <Card class="mx-auto flex max-w-2xl flex-col items-center p-12 text-center">
+    <div class="mb-3 rounded-full bg-muted p-3 text-muted-foreground"><Icon name="image" size={22} /></div>
+    <h2 class="text-lg font-semibold">Media kit</h2>
+    <p class="mt-2 text-sm text-muted-foreground">Coming soon.</p>
+  </Card>
+</AdminLayout>

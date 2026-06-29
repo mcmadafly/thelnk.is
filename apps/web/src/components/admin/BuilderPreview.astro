@@ -1,0 +1,18 @@
+---
+// Live preview frame for the builder pages. The .bio is themed entirely via inline vars
+// (themeStyle) set by the client, so it renders correctly inside the admin shell.
+import '../../styles/profile.css';
+---
+<div class="lg:sticky lg:top-6">
+  <div class="mb-2 text-xs font-medium text-muted-foreground">Live preview</div>
+  <div class="rounded-2xl border bg-[#0a0908] p-4">
+    <div class="mx-auto w-full max-w-[380px] overflow-hidden rounded-[2.25rem] border-8 border-black shadow-2xl">
+      <div class="bp-scroll" style="height:620px;overflow-y:auto">
+        <div class="bio" id="preview-bio">
+          <div class="bio-cover" aria-hidden="true"></div>
+          <div class="bio-inner" id="preview-inner"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,30 @@
+---
+// Dependency-free SVG line chart (no React). Stretches to container width; crisp 1.5px stroke.
+interface Props {
+  id: string;
+  points: number[];
+  stroke?: string; // any CSS color, e.g. var(--chart-1)
+  height?: number;
+  class?: string;
+}
+const { id, points, stroke = 'var(--chart-1)', height = 56, class: cls = '' } = Astro.props;
+
+const W = 100, H = 36;
+const max = Math.max(...points, 1);
+const min = Math.min(...points, 0);
+const range = max - min || 1;
+const step = points.length > 1 ? W / (points.length - 1) : W;
+const coords = points.map((p, i) => [i * step, H - ((p - min) / range) * H] as const);
+const line = coords.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)}`).join(' ');
+const area = `${line} L ${W.toFixed(2)} ${H} L 0 ${H} Z`;
+---
+<svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" class={cls} style={`height:${height}px;width:100%`} aria-hidden="true">
+  <defs>
+    <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color={stroke} stop-opacity="0.22" />
+      <stop offset="100%" stop-color={stroke} stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <path d={area} fill={`url(#${id})`} />
+  <path d={line} fill="none" stroke={stroke} stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

@@ -1,0 +1,19 @@
+---
+import { avatarBackground, avatarInitial } from '../../lib/avatar';
+
+interface Props {
+  src?: string | null;
+  name: string;
+  seed?: string;
+  size?: number;
+  class?: string;
+}
+const { src, name, seed, size = 32, class: cls = '' } = Astro.props;
+const s = seed ?? name;
+const style = src
+  ? `width:${size}px;height:${size}px;background:url('${src}') center/cover no-repeat`
+  : `width:${size}px;height:${size}px;background:${avatarBackground(s)}`;
+---
+<span class={`inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white ${cls}`} style={style}>
+  {!src && <span style={`font-size:${Math.round(size * 0.42)}px`}>{avatarInitial(name)}</span>}
+</span>

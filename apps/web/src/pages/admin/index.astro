@@ -1,0 +1,51 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getAdminProfile } from '../../lib/admin-auth';
+import { mediaUrl } from '../../lib/media';
+import Card from '../../components/ui/Card.astro';
+import Stat from '../../components/ui/Stat.astro';
+import Select from '../../components/ui/Select.astro';
+import Button from '../../components/ui/Button.astro';
+import Icon from '../../components/ui/Icon.astro';
+import LineChart from '../../components/ui/LineChart.astro';
+
+export const prerender = false;
+
+const prof = await getAdminProfile(Astro.locals);
+if (!prof) return Astro.redirect('/onboarding');
+
+// Sample 7-day series (real aggregation is a separate backend effort — see AFR-149).
+const viewsSeries = [180, 240, 210, 320, 300, 410, 480];
+const earningsSeries = [20, 0, 45, 30, 60, 80, 77];
+---
+
+<AdminLayout title="Overview" active="analytics" username={prof.username} avatarSrc={mediaUrl(prof.avatar_r2_key)}>
+  <Fragment slot="actions">
+    <Select value="7d" options={[{ value: '7d', label: 'Last 7 days' }, { value: '30d', label: 'Last 30 days' }, { value: '90d', label: 'Last 90 days' }]} />
+    <Button variant="outline" size="icon"><Icon name="filter" size={16} /></Button>
+  </Fragment>
+
+  <div class="mx-auto grid max-w-5xl grid-cols-1 gap-4 lg:grid-cols-2">
+    <Card class="p-6">
+      <h2 class="text-sm font-semibold text-muted-foreground">Activity</h2>
+      <div class="mt-4 grid grid-cols-3 gap-4">
+        <Stat label="Views" value="2,481" delta="+12%" trend="up" icon="eye" />
+        <Stat label="Clicks" value="934" delta="+4%" trend="up" icon="pointer" />
+        <Stat label="Click rate" value="37.6%" delta="-1%" trend="down" />
+      </div>
+      <LineChart id="chart-activity" points={viewsSeries} stroke="var(--chart-1)" class="mt-5" />
+      <p class="mt-2 text-xs text-muted-foreground">Last 7 days · sample data</p>
+    </Card>
+
+    <Card class="p-6">
+      <h2 class="text-sm font-semibold text-muted-foreground">Commerce</h2>
+      <div class="mt-4 grid grid-cols-3 gap-4">
+        <Stat label="Sales" value="12" delta="+3" trend="up" icon="dollar" />
+        <Stat label="Earnings" value="$312" delta="+8%" trend="up" />
+        <Stat label="Sale rate" value="1.3%" />
+      </div>
+      <LineChart id="chart-commerce" points={earningsSeries} stroke="var(--chart-2)" class="mt-5" />
+      <p class="mt-2 text-xs text-muted-foreground">Last 7 days · sample data · ties to Phase C orders</p>
+    </Card>
+  </div>
+</AdminLayout>

@@ -1,0 +1,24 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+  name?: string;
+  id?: string;
+  value?: string;
+  options: { value: string; label: string }[];
+  class?: string;
+}
+const { name, id, value, options, class: cls = '' } = Astro.props;
+---
+<div class={`relative inline-flex ${cls}`}>
+  <select
+    name={name}
+    id={id}
+    class="h-9 appearance-none rounded-md border bg-background pl-3 pr-9 text-sm font-medium shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+  >
+    {options.map((o) => (
+      <option value={o.value} selected={o.value === value}>{o.label}</option>
+    ))}
+  </select>
+  <Icon name="chevronDown" size={16} class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+</div>

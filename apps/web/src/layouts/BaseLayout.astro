@@ -1,6 +1,11 @@
 ---
 import HeaderAuth from '../components/HeaderAuth.astro';
 import '../styles/global.css';
+import { devBypassEnabled } from '../lib/dev-auth';
+
+// DEV preview: skip Clerk's client widget so the localhost-only preview doesn't try to
+// load (and get blocked from) the external clerk.accounts.dev frontend API.
+const devBypass = devBypassEnabled();
 
 interface Props {
   title?: string;
@@ -64,7 +69,7 @@ const isSignedIn = headerUserId !== null;
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;450;500;600;700&family=Space+Mono:wght@400;700&display=swap"
       rel="stylesheet"
     />
   </head>
@@ -74,10 +79,12 @@ const isSignedIn = headerUserId !== null;
         <header class="top">
           <a class="brand" href="/" aria-label="thelnk.is home">thelnk<span class="dot">.is</span></a>
           <div class="auth">
-            <slot name="auth">
-              <HeaderAuth />
-            </slot>
-            {isSignedIn ? (
+            {!devBypass && (
+              <slot name="auth">
+                <HeaderAuth />
+              </slot>
+            )}
+            {(isSignedIn || devBypass) ? (
               <a class="auth-dashboard-link" href="/builder" title="Edit your page">Builder</a>
             ) : (
               <a class="btn-primary" href="/onboarding">Claim your link</a>

@@ -1,0 +1,165 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import BuilderPreview from '../../components/admin/BuilderPreview.astro';
+import Card from '../../components/ui/Card.astro';
+import Button from '../../components/ui/Button.astro';
+import Icon from '../../components/ui/Icon.astro';
+import { getAdminProfile } from '../../lib/admin-auth';
+import { loadBuilderState } from '../../lib/builder-state';
+import { isPremiumClerkUser } from '../../lib/plan';
+import { mediaUrl } from '../../lib/media';
+import { THEMES } from '../../lib/themes';
+
+export const prerender = false;
+
+const prof = await getAdminProfile(Astro.locals);
+if (!prof) return Astro.redirect('/onboarding');
+const state = await loadBuilderState(prof.clerkUserId);
+if (!state) return Astro.redirect('/onboarding');
+const isPro = await isPremiumClerkUser(prof.clerkUserId);
+
+const avatarSrc = mediaUrl(state.avatar_r2_key);
+const bgSrc = mediaUrl(state.background_image_r2_key);
+const themes = THEMES.map((t) => ({ id: t.id, name: t.name, isPro: t.isPro, swatch: t.vars['bio-cover'] || t.vars.accent }));
+
+const inputCls =
+  'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+const labelCls = 'mb-1.5 block text-sm font-medium';
+---
+
+<AdminLayout title="Appearance" active="appearance" username={state.username} avatarSrc={avatarSrc}>
+  <Fragment slot="actions">
+    <span id="save-status" class="text-xs text-muted-foreground"></span>
+    <Button id="save-appearance" size="sm">Save changes</Button>
+  </Fragment>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+    <div class="max-w-xl space-y-6">
+      <Card class="space-y-4 p-6">
+        <h2 class="text-sm font-semibold">Profile</h2>
+        <div>
+          <label class={labelCls} for="f-name">Name</label>
+          <input id="f-name" class={inputCls} value={state.display_name} maxlength="80" placeholder="Your name" />
+        </div>
+        <div>
+          <label class={labelCls} for="f-subtitle">Subtitle</label>
+          <input id="f-subtitle" class={inputCls} value={state.subtitle} maxlength="80" placeholder="Builder · Designer · etc." />
+        </div>
+        <div>
+          <label class={labelCls} for="f-bio">Description</label>
+          <textarea id="f-bio" class={`${inputCls} h-auto min-h-[88px] py-2`} maxlength="280" placeholder="A line or two about you.">{state.bio}</textarea>
+        </div>
+      </Card>
+
+      <Card class="space-y-5 p-6">
+        <h2 class="text-sm font-semibold">Images</h2>
+        <div class="flex items-center gap-4">
+          <div id="avatar-thumb" class="h-16 w-16 shrink-0 rounded-full border bg-muted bg-cover bg-center" style={avatarSrc ? `background-image:url('${avatarSrc}')` : ''}></div>
+          <div class="space-y-1">
+            <div class="text-sm font-medium">Avatar</div>
+            <div class="flex gap-2">
+              <Button id="avatar-upload" variant="outline" size="sm"><Icon name="image" size={14} /> Upload</Button>
+              <Button id="avatar-remove" variant="ghost" size="sm">Remove</Button>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div id="bg-thumb" class="h-16 w-24 shrink-0 rounded-md border bg-muted bg-cover bg-center" style={bgSrc ? `background-image:url('${bgSrc}')` : ''}></div>
+          <div class="space-y-1">
+            <div class="text-sm font-medium">Background</div>
+            <div class="flex gap-2">
+              <Button id="bg-upload" variant="outline" size="sm"><Icon name="image" size={14} /> Upload</Button>
+              <Button id="bg-remove" variant="ghost" size="sm">Remove</Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card class="p-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold">Theme</h2>
+          {!isPro && <span class="text-xs text-muted-foreground">Pro themes need an upgrade</span>}
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {themes.map((t) => (
+            <button
+              type="button"
+              data-theme={t.id}
+              disabled={t.isPro && !isPro}
+              class="theme-btn group relative flex flex-col gap-2 rounded-lg border p-2 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span class="h-12 w-full rounded-md" style={`background:${t.swatch}`}></span>
+              <span class="flex items-center justify-between text-xs font-medium">
+                {t.name}
+                {t.isPro && <span class="rounded bg-muted px-1 py-0.5 text-[9px] uppercase text-muted-foreground">Pro</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+      </Card>
+    </div>
+
+    <BuilderPreview />
+  </div>
+
+  <script id="builder-state" type="application/json" set:html={JSON.stringify(state)}></script>
+
+  <script>
+    import { paintPreview, uploadImage, saveProfile, type BuilderState } from '../../lib/builder-preview';
+    import { mediaUrl } from '../../lib/media';
+
+    const state = JSON.parse(document.getElementById('builder-state')!.textContent!) as BuilderState;
+    const bioEl = document.getElementById('preview-bio') as HTMLElement;
+    const innerEl = document.getElementById('preview-inner') as HTMLElement;
+    const paint = () => paintPreview(bioEl, innerEl, state);
+
+    const on = (sel: string, evt: string, fn: (e: Event) => void) => document.querySelector(sel)?.addEventListener(evt, fn);
+    on('#f-name', 'input', (e) => { state.display_name = (e.target as HTMLInputElement).value; paint(); });
+    on('#f-subtitle', 'input', (e) => { state.subtitle = (e.target as HTMLInputElement).value; paint(); });
+    on('#f-bio', 'input', (e) => { state.bio = (e.target as HTMLTextAreaElement).value; paint(); });
+
+    const themeBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.theme-btn'));
+    const syncTheme = () => themeBtns.forEach((b) => {
+      const active = b.dataset.theme === state.theme;
+      b.classList.toggle('border-primary', active);
+      b.classList.toggle('ring-2', active);
+      b.classList.toggle('ring-primary', active);
+    });
+    themeBtns.forEach((b) => b.addEventListener('click', () => { state.theme = b.dataset.theme!; syncTheme(); paint(); }));
+    syncTheme();
+
+    on('#avatar-upload', 'click', async () => {
+      const key = await uploadImage('avatar');
+      if (!key) return;
+      state.avatar_r2_key = key;
+      (document.getElementById('avatar-thumb') as HTMLElement).style.backgroundImage = `url('${mediaUrl(key)}')`;
+      paint();
+    });
+    on('#avatar-remove', 'click', () => {
+      state.avatar_r2_key = null;
+      (document.getElementById('avatar-thumb') as HTMLElement).style.backgroundImage = '';
+      paint();
+    });
+    on('#bg-upload', 'click', async () => {
+      const key = await uploadImage('background');
+      if (!key) return;
+      state.background_image_r2_key = key;
+      (document.getElementById('bg-thumb') as HTMLElement).style.backgroundImage = `url('${mediaUrl(key)}')`;
+      paint();
+    });
+    on('#bg-remove', 'click', () => {
+      state.background_image_r2_key = null;
+      (document.getElementById('bg-thumb') as HTMLElement).style.backgroundImage = '';
+      paint();
+    });
+
+    const status = document.getElementById('save-status')!;
+    on('#save-appearance', 'click', async () => {
+      status.textContent = 'Saving…';
+      const r = await saveProfile(state);
+      status.textContent = r.ok ? 'Saved ✓' : (r.error || 'Could not save');
+    });
+
+    paint();
+  </script>
+</AdminLayout>

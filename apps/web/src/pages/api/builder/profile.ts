@@ -5,6 +5,7 @@ import { isThemeAllowed, getTheme } from '../../../lib/themes';
 import { normalizeHttpUrl } from '../../../lib/urls';
 import { SOCIAL_NAMES } from '../../../lib/profile-render';
 import { devDetail } from '../../../lib/dev-detail';
+import { devClerkUserId } from '../../../lib/dev-auth';
 
 export const prerender = false;
 
@@ -25,8 +26,8 @@ function mediaValue(v: unknown): string | null {
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  const auth = await locals.auth();
-  const clerkUserId = auth.userId ?? null;
+  const auth = typeof locals.auth === 'function' ? await locals.auth() : { userId: null };
+  const clerkUserId = (auth.userId ?? null) || (await devClerkUserId());
   if (!clerkUserId) return Response.json({ error: 'Sign in' }, { status: 401 });
 
   let body: unknown;

@@ -120,10 +120,16 @@ export function isThemeAllowed(id: string, isPro: boolean): boolean {
   return isPro || !t.isPro;
 }
 
+/** Theme-independent base vars so `.bio` is self-contained anywhere (e.g. the admin preview,
+ * which doesn't load the public global.css). */
+const BASE_VARS =
+  "--font:'Manrope',system-ui,-apple-system,sans-serif;" +
+  "--font-display:'Alexandria',system-ui,sans-serif;" +
+  "--font-mono:'Space Mono',ui-monospace,monospace;" +
+  '--link-radius:16px;--radius:16px;--radius-sm:11px';
+
 /** Inline `style` value (CSS custom properties) for a theme — apply on the `.bio` root. */
 export function themeStyle(id: string | null | undefined): string {
   const t = getTheme(id);
-  return Object.entries(t.vars)
-    .map(([k, v]) => `--${k}:${v}`)
-    .join(';');
+  return BASE_VARS + ';' + Object.entries(t.vars).map(([k, v]) => `--${k}:${v}`).join(';');
 }

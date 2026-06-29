@@ -3,6 +3,7 @@ import type { MiddlewareHandler } from 'astro';
 import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
 import { checkPostRateLimit, RATE_LIMITS } from './lib/rate-limit';
+import { devBypassEnabled } from './lib/dev-auth';
 
 /**
  * Read `cloudflare:workers` `env` inside the request middleware, not at module init.
@@ -35,6 +36,12 @@ export const onRequest = defineMiddleware(
           });
         }
       }
+    }
+
+    // DEV bypass: Clerk integration is disabled, so don't run clerkMiddleware. Auth comes
+    // from src/lib/dev-auth.ts; pages/APIs treat locals.auth() as absent (null user).
+    if (devBypassEnabled()) {
+      return next();
     }
 
     const secretKey = env.CLERK_SECRET_KEY;

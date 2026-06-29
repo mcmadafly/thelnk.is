@@ -97,13 +97,14 @@ a:hover { text-decoration: none; }
 /* ── Footer ── */
 .main { flex: 1; }
 .foot {
-  padding: 2.25rem clamp(1.25rem, 4vw, 2.5rem);
+  padding: 1.5rem clamp(1.25rem, 4vw, 2.5rem);
   border-top: 1px solid var(--border);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  text-align: center;
-  gap: 0.7rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.5rem;
   font-size: 0.84rem;
   color: var(--muted-2);
 }
@@ -113,6 +114,11 @@ a:hover { text-decoration: none; }
 .foot-nav { display: flex; align-items: center; gap: 1rem; }
 .foot-nav a { color: var(--muted-2); }
 .foot-nav a:hover { color: var(--text); }
+
+/* Stack + center only on mobile */
+@media (max-width: 640px) {
+  .foot { flex-direction: column; text-align: center; gap: 0.7rem; }
+}
 
 /* ── Forms ── */
 label {

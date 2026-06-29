@@ -8,6 +8,7 @@
   min-height: 100dvh;
   padding-bottom: 3rem;
   background: var(--bg);
+  font-family: var(--font, 'Manrope', system-ui, sans-serif);
 }
 /* Cover gradient comes from the theme via --bio-cover; fades into the page bg. */
 .bio-cover {

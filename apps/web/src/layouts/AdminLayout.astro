@@ -1,0 +1,115 @@
+---
+import '../styles/admin.css';
+import NavItem from '../components/ui/NavItem.astro';
+import Avatar from '../components/ui/Avatar.astro';
+import Icon from '../components/ui/Icon.astro';
+
+interface Props {
+  title?: string;
+  active?: 'links' | 'appearance' | 'analytics' | 'media' | 'wallet' | 'settings';
+  username: string;
+  avatarSrc?: string | null;
+}
+const { title = 'Overview', active = 'analytics', username, avatarSrc = null } = Astro.props;
+
+const nav = [
+  { key: 'links', label: 'Links', icon: 'link', href: '/admin/links' },
+  { key: 'appearance', label: 'Appearance', icon: 'palette', href: '/admin/appearance' },
+  { key: 'analytics', label: 'Analytics', icon: 'chart', href: '/admin' },
+  { key: 'media', label: 'Media kit', icon: 'image', href: '/admin/media', soon: true },
+  { key: 'wallet', label: 'Wallet', icon: 'wallet', href: '/admin/wallet', soon: true },
+  { key: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings' },
+] as const;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · thelnk.is</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=Alexandria:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+    <script is:inline>
+      (function () {
+        try {
+          var saved = localStorage.getItem('thelnk_admin_theme');
+          var dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="min-h-screen bg-background text-foreground antialiased">
+    <div class="flex min-h-screen">
+      <!-- Sidebar -->
+      <aside
+        id="admin-sidebar"
+        class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform md:static md:z-auto md:translate-x-0"
+      >
+        <div class="flex h-14 items-center border-b border-sidebar-border px-5">
+          <a href="/" class="text-lg font-bold tracking-tight">thelnk<span class="text-primary">.is</span></a>
+        </div>
+        <nav class="flex-1 space-y-1 overflow-y-auto p-3">
+          {nav.map((item) => (
+            <NavItem href={item.href} label={item.label} icon={item.icon} active={item.key === active} disabled={(item as { soon?: boolean }).soon} />
+          ))}
+        </nav>
+        <div class="border-t border-sidebar-border p-3">
+          <a href={`/${username}`} target="_blank" rel="noopener" class="flex items-center gap-2 rounded-md p-2 transition-colors hover:bg-sidebar-accent">
+            <Avatar src={avatarSrc} name={username} size={34} />
+            <div class="min-w-0">
+              <div class="truncate text-sm font-medium">@{username}</div>
+              <div class="text-xs text-muted-foreground">View page ↗</div>
+            </div>
+          </a>
+        </div>
+      </aside>
+
+      <div id="admin-backdrop" class="fixed inset-0 z-30 hidden bg-black/50 md:hidden"></div>
+
+      <!-- Main column -->
+      <div class="flex min-w-0 flex-1 flex-col">
+        <header class="flex h-14 items-center gap-3 border-b px-4 md:px-6">
+          <button id="admin-menu" class="-ml-1 rounded-md p-2 text-muted-foreground hover:bg-accent md:hidden" aria-label="Open menu">
+            <Icon name="panelLeft" size={18} />
+          </button>
+          <h1 class="text-base font-semibold tracking-tight">{title}</h1>
+          <div class="ml-auto flex items-center gap-2">
+            <slot name="actions" />
+            <button id="theme-toggle" class="rounded-md border p-2 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Toggle theme">
+              <span class="hidden dark:inline"><Icon name="sun" size={16} /></span>
+              <span class="inline dark:hidden"><Icon name="moon" size={16} /></span>
+            </button>
+          </div>
+        </header>
+        <main class="flex-1 overflow-y-auto p-4 md:p-6">
+          <slot />
+        </main>
+      </div>
+    </div>
+
+    <script is:inline>
+      // Mobile sidebar toggle
+      (function () {
+        var sb = document.getElementById('admin-sidebar');
+        var bd = document.getElementById('admin-backdrop');
+        var btn = document.getElementById('admin-menu');
+        function open() { sb.classList.remove('-translate-x-full'); bd.classList.remove('hidden'); }
+        function close() { sb.classList.add('-translate-x-full'); bd.classList.add('hidden'); }
+        btn && btn.addEventListener('click', open);
+        bd && bd.addEventListener('click', close);
+      })();
+      // Theme toggle (AFR-148)
+      (function () {
+        var t = document.getElementById('theme-toggle');
+        t && t.addEventListener('click', function () {
+          var dark = document.documentElement.classList.toggle('dark');
+          try { localStorage.setItem('thelnk_admin_theme', dark ? 'dark' : 'light'); } catch (e) {}
+        });
+      })();
+    </script>
+  </body>
+</html>

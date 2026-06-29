@@ -3,6 +3,7 @@ import { customAlphabet } from 'nanoid';
 import { presignPut } from '../../../lib/r2-presign';
 import { sanitizeUploadContentType } from '../../../lib/uploads-sanitize';
 import { devDetail } from '../../../lib/dev-detail';
+import { devClerkUserId } from '../../../lib/dev-auth';
 
 export const prerender = false;
 
@@ -12,8 +13,9 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const PURPOSES = new Set(['avatar', 'background', 'product']);
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  const auth = await locals.auth();
-  if (!auth.userId) return Response.json({ error: 'Sign in to upload' }, { status: 401 });
+  const auth = typeof locals.auth === 'function' ? await locals.auth() : { userId: null };
+  const userId = (auth.userId ?? null) || (await devClerkUserId());
+  if (!userId) return Response.json({ error: 'Sign in to upload' }, { status: 401 });
 
   let body: unknown;
   try { body = await request.json(); } catch { return Response.json({ error: 'Invalid JSON' }, { status: 400 }); }

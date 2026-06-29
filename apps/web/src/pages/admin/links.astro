@@ -1,0 +1,173 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import BuilderPreview from '../../components/admin/BuilderPreview.astro';
+import Card from '../../components/ui/Card.astro';
+import Button from '../../components/ui/Button.astro';
+import Icon from '../../components/ui/Icon.astro';
+import { getAdminProfile } from '../../lib/admin-auth';
+import { loadBuilderState } from '../../lib/builder-state';
+import { mediaUrl } from '../../lib/media';
+import { SOCIAL_NAMES } from '../../lib/profile-render';
+
+export const prerender = false;
+
+const prof = await getAdminProfile(Astro.locals);
+if (!prof) return Astro.redirect('/onboarding');
+const state = await loadBuilderState(prof.clerkUserId);
+if (!state) return Astro.redirect('/onboarding');
+const avatarSrc = mediaUrl(state.avatar_r2_key);
+---
+
+<AdminLayout title="Links" active="links" username={state.username} avatarSrc={avatarSrc}>
+  <Fragment slot="actions">
+    <span id="save-status" class="text-xs text-muted-foreground"></span>
+    <Button id="save-socials" size="sm">Save socials</Button>
+  </Fragment>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+    <div class="max-w-xl space-y-6">
+      <Card class="p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-semibold">Links</h2>
+            <p class="mt-0.5 text-xs text-muted-foreground">Drag to reorder · star to feature · edits save automatically</p>
+          </div>
+          <Button id="add-link" variant="outline" size="sm"><Icon name="plus" size={14} /> Add link</Button>
+        </div>
+        <div id="links-list" class="mt-4 space-y-2"></div>
+        <p id="links-empty" class="mt-4 hidden text-sm text-muted-foreground">No links yet — add your first one.</p>
+      </Card>
+
+      <Card class="p-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold">Social icons</h2>
+          <Button id="add-social" variant="outline" size="sm"><Icon name="plus" size={14} /> Add social</Button>
+        </div>
+        <div id="socials-list" class="mt-4 space-y-2"></div>
+        <p id="socials-empty" class="mt-4 hidden text-sm text-muted-foreground">No socials yet.</p>
+      </Card>
+    </div>
+
+    <BuilderPreview />
+  </div>
+
+  <script id="builder-state" type="application/json" set:html={JSON.stringify(state)}></script>
+  <script id="social-names" type="application/json" set:html={JSON.stringify(SOCIAL_NAMES)}></script>
+
+  <script>
+    import { paintPreview, saveProfile, type BuilderState } from '../../lib/builder-preview';
+
+    const state = JSON.parse(document.getElementById('builder-state')!.textContent!) as BuilderState;
+    const SOCIALS = JSON.parse(document.getElementById('social-names')!.textContent!) as string[];
+    const bioEl = document.getElementById('preview-bio') as HTMLElement;
+    const innerEl = document.getElementById('preview-inner') as HTMLElement;
+    const statusEl = document.getElementById('save-status')!;
+    const paint = () => paintPreview(bioEl, innerEl, state);
+    const status = (t: string) => { statusEl.textContent = t; };
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+    // ── Links API ──
+    async function api(payload: Record<string, unknown>) {
+      const res = await fetch('/api/builder/links', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      });
+      return { ok: res.ok, data: (await res.json().catch(() => ({}))) as any };
+    }
+    async function saveLink(i: number) {
+      const l = state.links[i];
+      if (!l || !l.title.trim() || !l.url.trim()) return;
+      status('Saving…');
+      const { ok, data } = await api({ op: 'upsert', id: l.id || 0, title: l.title, url: l.url, is_featured: l.is_featured });
+      if (ok) { if (data.id) l.id = data.id; status('Saved ✓'); } else status(data.error || 'Could not save');
+    }
+    async function deleteLink(i: number) {
+      const l = state.links[i];
+      if (l?.id) await api({ op: 'delete', id: l.id });
+      state.links.splice(i, 1);
+      renderLinks(); paint();
+    }
+    async function saveOrder() {
+      const ids = state.links.filter((l) => l.id).map((l) => l.id);
+      if (ids.length) await api({ op: 'reorder', ids });
+    }
+
+    const linksList = document.getElementById('links-list')!;
+    const linksEmpty = document.getElementById('links-empty')!;
+    let dragFrom = -1;
+
+    function renderLinks() {
+      linksEmpty.classList.toggle('hidden', state.links.length > 0);
+      linksList.innerHTML = state.links.map((l, i) => `
+        <div class="link-row flex items-center gap-2 rounded-lg border bg-background p-2" draggable="true" data-idx="${i}">
+          <span class="drag-handle cursor-grab select-none px-1 text-muted-foreground" title="Drag to reorder">⠿</span>
+          <div class="grid flex-1 gap-2 sm:grid-cols-2">
+            <input class="row-title h-8 rounded-md border bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="Title" value="${esc(l.title)}" />
+            <input class="row-url h-8 rounded-md border bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="https://" value="${esc(l.url)}" />
+          </div>
+          <button class="row-feature rounded-md p-1.5 text-base leading-none ${l.is_featured ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}" title="Feature">${l.is_featured ? '★' : '☆'}</button>
+          <button class="row-delete rounded-md p-1.5 text-muted-foreground hover:text-destructive" title="Delete">✕</button>
+        </div>`).join('');
+
+      linksList.querySelectorAll<HTMLElement>('.link-row').forEach((row) => {
+        const i = Number(row.dataset.idx);
+        row.querySelector<HTMLInputElement>('.row-title')!.addEventListener('input', (e) => { state.links[i].title = (e.target as HTMLInputElement).value; paint(); });
+        row.querySelector<HTMLInputElement>('.row-title')!.addEventListener('blur', () => saveLink(i));
+        row.querySelector<HTMLInputElement>('.row-url')!.addEventListener('input', (e) => { state.links[i].url = (e.target as HTMLInputElement).value; paint(); });
+        row.querySelector<HTMLInputElement>('.row-url')!.addEventListener('blur', () => saveLink(i));
+        row.querySelector('.row-feature')!.addEventListener('click', () => { state.links[i].is_featured = !state.links[i].is_featured; renderLinks(); paint(); saveLink(i); });
+        row.querySelector('.row-delete')!.addEventListener('click', () => deleteLink(i));
+        row.addEventListener('dragstart', () => { dragFrom = i; });
+        row.addEventListener('dragover', (e) => e.preventDefault());
+        row.addEventListener('drop', (e) => {
+          e.preventDefault();
+          if (dragFrom < 0 || dragFrom === i) return;
+          const [moved] = state.links.splice(dragFrom, 1);
+          state.links.splice(i, 0, moved);
+          dragFrom = -1;
+          renderLinks(); paint(); saveOrder();
+        });
+      });
+    }
+
+    document.getElementById('add-link')!.addEventListener('click', () => {
+      state.links.push({ id: null, title: '', url: '', is_featured: false });
+      renderLinks(); paint();
+      const last = linksList.querySelector<HTMLInputElement>('.link-row:last-child .row-title');
+      last?.focus();
+    });
+
+    // ── Socials ──
+    const socialsList = document.getElementById('socials-list')!;
+    const socialsEmpty = document.getElementById('socials-empty')!;
+    function renderSocials() {
+      socialsEmpty.classList.toggle('hidden', state.socials.length > 0);
+      socialsList.innerHTML = state.socials.map((s, i) => `
+        <div class="social-row flex items-center gap-2 rounded-lg border bg-background p-2" data-idx="${i}">
+          <select class="row-name h-8 rounded-md border bg-background px-2 text-sm capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            ${SOCIALS.map((n) => `<option value="${n}" ${n === s.name ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+          <input class="row-surl h-8 flex-1 rounded-md border bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="https://" value="${esc(s.url)}" />
+          <button class="srow-delete rounded-md p-1.5 text-muted-foreground hover:text-destructive" title="Remove">✕</button>
+        </div>`).join('');
+      socialsList.querySelectorAll<HTMLElement>('.social-row').forEach((row) => {
+        const i = Number(row.dataset.idx);
+        (row.querySelector('.row-name') as unknown as HTMLSelectElement).addEventListener('change', (e) => { state.socials[i].name = (e.target as HTMLSelectElement).value; paint(); });
+        row.querySelector<HTMLInputElement>('.row-surl')!.addEventListener('input', (e) => { state.socials[i].url = (e.target as HTMLInputElement).value; paint(); });
+        row.querySelector('.srow-delete')!.addEventListener('click', () => { state.socials.splice(i, 1); renderSocials(); paint(); });
+      });
+    }
+    document.getElementById('add-social')!.addEventListener('click', () => {
+      state.socials.push({ name: SOCIALS[0], url: '' });
+      renderSocials(); paint();
+    });
+    document.getElementById('save-socials')!.addEventListener('click', async () => {
+      status('Saving…');
+      const r = await saveProfile(state);
+      status(r.ok ? 'Saved ✓' : (r.error || 'Could not save'));
+    });
+
+    renderLinks();
+    renderSocials();
+    paint();
+  </script>
+</AdminLayout>
