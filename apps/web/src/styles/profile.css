@@ -1,0 +1,149 @@
+/* Shared public-profile styles — used by [username].astro (SSR) and the builder live preview.
+   Authored in CSS variables so a theme (lib/themes.ts) can override via inline custom props on .bio. */
+
+.bio {
+  position: relative;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding-bottom: 3rem;
+  background: var(--bg);
+}
+/* Cover gradient comes from the theme via --bio-cover; fades into the page bg. */
+.bio-cover {
+  height: 200px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 55%, var(--bg) 100%),
+    var(--bio-cover, linear-gradient(135deg, #f97316 0%, #d946ef 60%, #6d28d9 100%));
+  background-size: cover;
+  background-position: center;
+}
+/* When a background image is set, the caller puts it on .bio as a layered background. */
+.bio.has-bg .bio-cover { background: linear-gradient(180deg, rgba(0, 0, 0, 0) 40%, var(--bg) 100%); }
+
+.bio-inner {
+  padding: 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.bio-avatar {
+  width: 104px;
+  height: 104px;
+  margin-top: -56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid var(--bg);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.6rem;
+}
+.bio-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 1rem 0 0;
+}
+.bio-subtitle {
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  margin-top: 0.3rem;
+}
+.bio-handle { font-weight: 600; font-size: 0.95rem; color: var(--accent); margin-top: 0.4rem; }
+.bio-text {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 320px;
+  margin: 0.9rem 0 0;
+}
+
+.bio-socials { display: flex; gap: 12px; margin-top: 1.4rem; flex-wrap: wrap; justify-content: center; }
+.bio-social {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border-hi);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  transition: border-color 0.12s, background 0.12s, transform 0.12s;
+}
+.bio-social:hover { border-color: var(--accent); color: #fff; background: rgba(249, 115, 22, 0.12); transform: translateY(-2px); }
+
+/* Featured card (accent) */
+.bio-featured {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 1.75rem;
+  padding: 18px 20px;
+  border-radius: var(--link-radius);
+  background: var(--accent);
+  box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.4);
+  text-align: left;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.bio-featured:hover { transform: translateY(-2px); text-decoration: none; }
+.bio-featured-kicker { font-family: var(--font-mono); font-weight: 700; font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85); }
+.bio-featured-title { font-family: var(--font-display); font-weight: 700; font-size: 1.25rem; color: #fff; }
+
+.bio-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 12px;
+}
+.bio-links:first-of-type { margin-top: 1.75rem; }
+.bio-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--link-radius);
+  padding: 17px 18px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-dim);
+  transition: transform 0.12s, border-color 0.12s, background 0.12s;
+}
+.bio-link:hover { transform: translateY(-2px); border-color: var(--border-hi); background: var(--surface-2); text-decoration: none; }
+.bio-link-arr { color: var(--muted-3); flex-shrink: 0; }
+.bio-link:hover .bio-link-arr { color: var(--text-dim); }
+
+.bio-empty {
+  margin-top: 1.75rem;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px dashed var(--border-hi);
+  border-radius: var(--radius);
+  padding: 2rem 1.25rem;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+}
+.bio-empty-title { margin: 0; font-weight: 700; color: var(--text); }
+.bio-empty-sub { margin: 0.4rem 0 0; font-size: 0.88rem; color: var(--muted-2); }
+
+.bio-footer {
+  display: block;
+  text-align: center;
+  margin-top: 2.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--muted-3);
+}
+.bio-footer .dot { color: var(--accent); }
+.bio-footer:hover { color: var(--muted); text-decoration: none; }

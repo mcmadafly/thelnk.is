@@ -78,7 +78,7 @@ const isSignedIn = headerUserId !== null;
               <HeaderAuth />
             </slot>
             {isSignedIn ? (
-              <a class="auth-dashboard-link" href="/dashboard" title="Manage your page">Dashboard</a>
+              <a class="auth-dashboard-link" href="/builder" title="Edit your page">Builder</a>
             ) : (
               <a class="btn-primary" href="/onboarding">Claim your link</a>
             )}

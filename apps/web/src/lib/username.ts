@@ -8,7 +8,7 @@
 export const RESERVED_USERNAMES = new Set([
   // route/segment collisions
   'api', 'dashboard', 'sign-in', 'sign-up', 'signin', 'signup', 'login', 'logout',
-  'health', 'terms', 'privacy', 'changelog', 'onboarding', 'claim', 'settings', 'account', 'admin',
+  'health', 'terms', 'privacy', 'changelog', 'onboarding', 'builder', 'claim', 'settings', 'account', 'admin',
   'f',
   // static assets
   'favicon.ico', 'favicon.svg', 'favicon.png', 'robots.txt', 'sitemap.xml',

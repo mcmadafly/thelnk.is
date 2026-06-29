@@ -38,7 +38,7 @@ const isSignedIn = clerkUserId !== null;
 
       {myUsername ? (
         <div class="hero-actions">
-          <a class="btn-primary hero-cta" href="/dashboard">Go to your dashboard</a>
+          <a class="btn-primary hero-cta" href="/builder">Open your builder</a>
           <p class="hero-meta">Your page: <a href={`/${myUsername}`}>{host}/{myUsername}</a></p>
         </div>
       ) : isSignedIn ? (

@@ -1,0 +1,450 @@
+---
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/profile.css';
+import { isPremiumClerkUser } from '../lib/plan';
+import { THEMES } from '../lib/themes';
+
+export const prerender = false;
+
+let clerkUserId: string | null = null;
+try {
+  clerkUserId = (await Astro.locals.auth()).userId ?? null;
+} catch {
+  clerkUserId = null;
+}
+if (!clerkUserId) return Astro.redirect('/sign-up');
+
+type ProfileRow = {
+  id: number; username: string; display_name: string | null; subtitle: string | null;
+  bio: string | null; avatar_r2_key: string | null; background_image_r2_key: string | null;
+  theme: string; socials: string | null;
+};
+const profile = await env.DB.prepare(
+  `SELECT id, username, display_name, subtitle, bio, avatar_r2_key, background_image_r2_key, theme, socials
+   FROM profiles WHERE clerk_user_id = ?`,
+).bind(clerkUserId).first<ProfileRow>();
+if (!profile) return Astro.redirect('/onboarding');
+
+const linkRows = (await env.DB.prepare(
+  `SELECT id, title, url, is_featured FROM profile_links
+   WHERE profile_id = ? ORDER BY sort_order ASC, id ASC`,
+).bind(profile.id).all<{ id: number; title: string; url: string; is_featured: number }>()).results ?? [];
+
+let socials: { name: string; url: string }[] = [];
+if (profile.socials) {
+  try {
+    const p = JSON.parse(profile.socials);
+    if (Array.isArray(p)) socials = p.filter((s) => s && typeof s.name === 'string' && typeof s.url === 'string');
+  } catch { /* ignore */ }
+}
+
+const isPro = await isPremiumClerkUser(clerkUserId);
+const origin = env.PUBLIC_APP_ORIGIN.replace(/\/+$/, '');
+const host = origin.replace(/^https?:\/\//, '');
+
+const state = {
+  username: profile.username,
+  display_name: profile.display_name ?? '',
+  subtitle: profile.subtitle ?? '',
+  bio: profile.bio ?? '',
+  theme: profile.theme || 'default',
+  avatar_r2_key: profile.avatar_r2_key ?? null,
+  background_image_r2_key: profile.background_image_r2_key ?? null,
+  socials,
+  links: linkRows.map((l) => ({ id: l.id, title: l.title, url: l.url, is_featured: !!l.is_featured })),
+  isPro,
+};
+const SOCIAL_OPTIONS = ['instagram','tiktok','x','youtube','spotify','github','threads','bluesky','twitch','discord','substack','patreon'];
+---
+
+<BaseLayout title="Builder · thelnk.is">
+  <div class="builder">
+    <!-- EDITOR -->
+    <div class="builder-editor">
+      <header class="be-head">
+        <h1>Your page</h1>
+        <a class="be-public" href={`/${profile.username}`} target="_blank" rel="noopener">{host}/{profile.username} ↗</a>
+      </header>
+
+      <!-- Profile -->
+      <section class="be-card">
+        <h2>Profile</h2>
+        <div class="be-images">
+          <div class="be-img-field">
+            <span class="be-label">Avatar</span>
+            <button type="button" class="be-img-btn" data-upload="avatar">Upload</button>
+            <button type="button" class="be-img-clear" data-clear="avatar">Clear</button>
+          </div>
+          <div class="be-img-field">
+            <span class="be-label">Background</span>
+            <button type="button" class="be-img-btn" data-upload="background">Upload</button>
+            <button type="button" class="be-img-clear" data-clear="background">Clear</button>
+          </div>
+        </div>
+        <label class="be-label" for="f-name">Name</label>
+        <input id="f-name" data-field="display_name" type="text" maxlength="80" value={state.display_name} placeholder="Your name" />
+        <label class="be-label" for="f-subtitle">Subtitle <span class="be-hint">(small line under your name)</span></label>
+        <input id="f-subtitle" data-field="subtitle" type="text" maxlength="80" value={state.subtitle} placeholder="Founder · builder · etc." />
+        <label class="be-label" for="f-bio">Description</label>
+        <textarea id="f-bio" data-field="bio" maxlength="500" rows="3" placeholder="A sentence about you.">{state.bio}</textarea>
+      </section>
+
+      <!-- Theme -->
+      <section class="be-card">
+        <h2>Theme {!isPro && <span class="be-hint">· Pro themes need an upgrade</span>}</h2>
+        <div class="be-themes">
+          {THEMES.map((t) => (
+            <button
+              type="button"
+              class="be-theme"
+              data-theme={t.id}
+              data-pro={t.isPro ? '1' : '0'}
+              disabled={t.isPro && !isPro}
+              title={t.isPro && !isPro ? 'Pro theme' : t.name}
+              style={`--sw-bg:${t.vars.bg};--sw-accent:${t.vars.accent};--sw-cover:${t.vars['bio-cover']}`}
+            >
+              <span class="be-theme-sw"></span>
+              <span class="be-theme-name">{t.name}{t.isPro ? ' ◆' : ''}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <!-- Social links -->
+      <section class="be-card">
+        <h2>Social links</h2>
+        <div id="socials-list" class="be-socials"></div>
+        <button type="button" id="add-social" class="be-add">+ Add social</button>
+      </section>
+
+      <!-- Regular links -->
+      <section class="be-card">
+        <h2>Links</h2>
+        <div id="links-list" class="be-links"></div>
+        <button type="button" id="add-link" class="be-add">+ Add link</button>
+      </section>
+
+      <div class="be-savebar">
+        <button type="button" id="save-profile" class="btn-primary">Save</button>
+        <span id="save-status" class="be-status" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="builder-preview">
+      <div class="bp-toggle">
+        <button type="button" class="bp-dev active" data-dev="mobile">Mobile</button>
+        <button type="button" class="bp-dev" data-dev="desktop">Desktop</button>
+      </div>
+      <div id="preview-frame" class="bp-frame mobile">
+        <div class="bio" id="preview-bio">
+          <div class="bio-cover" aria-hidden="true"></div>
+          <div class="bio-inner" id="preview-inner"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" id="builder-state" set:html={JSON.stringify(state)}></script>
+</BaseLayout>
+
+<script>
+  import { renderProfileHTML } from '../lib/profile-render';
+  import { themeStyle } from '../lib/themes';
+
+  type Social = { name: string; url: string };
+  type Link = { id: number | null; title: string; url: string; is_featured: boolean };
+  type State = {
+    username: string; display_name: string; subtitle: string; bio: string; theme: string;
+    avatar_r2_key: string | null; background_image_r2_key: string | null;
+    socials: Social[]; links: Link[]; isPro: boolean;
+  };
+
+  const SOCIAL_OPTIONS = ['instagram','tiktok','x','youtube','spotify','github','threads','bluesky','twitch','discord','substack','patreon'];
+
+  const state: State = JSON.parse(document.getElementById('builder-state')!.textContent || '{}');
+
+  const $ = (s: string) => document.querySelector(s) as HTMLElement;
+  const previewBio = document.getElementById('preview-bio')!;
+  const previewInner = document.getElementById('preview-inner')!;
+  const statusEl = document.getElementById('save-status')!;
+
+  function mediaUrl(key: string | null): string | null {
+    if (!key) return null;
+    if (/^(https?:)?\//.test(key)) return key;
+    return '/api/media/' + key;
+  }
+
+  function paint() {
+    const featured = state.links.filter((l) => l.is_featured);
+    const links = state.links.filter((l) => !l.is_featured);
+    previewInner.innerHTML = renderProfileHTML({
+      username: state.username,
+      displayName: state.display_name || state.username,
+      subtitle: state.subtitle,
+      bio: state.bio,
+      avatarSrc: mediaUrl(state.avatar_r2_key),
+      socials: state.socials,
+      featured,
+      links,
+    });
+    const bg = mediaUrl(state.background_image_r2_key);
+    const base = themeStyle(state.theme);
+    previewBio.setAttribute('style', bg
+      ? `${base};background:linear-gradient(rgba(0,0,0,.4),rgba(0,0,0,.4)),url('${bg}') center/cover`
+      : base);
+    previewBio.classList.toggle('has-bg', !!bg);
+    // reflect active theme button
+    document.querySelectorAll('.be-theme').forEach((b) =>
+      b.classList.toggle('active', (b as HTMLElement).dataset.theme === state.theme));
+  }
+
+  function setStatus(text: string, ok: boolean | null = null) {
+    statusEl.textContent = text;
+    statusEl.dataset.state = ok === null ? 'muted' : ok ? 'ok' : 'err';
+  }
+
+  // ── Profile fields ──
+  document.querySelectorAll('[data-field]').forEach((el) => {
+    el.addEventListener('input', () => {
+      const f = (el as HTMLElement).dataset.field as keyof State;
+      (state as any)[f] = (el as HTMLInputElement).value;
+      paint();
+    });
+  });
+
+  // ── Theme ──
+  document.querySelectorAll('.be-theme').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if ((btn as HTMLButtonElement).disabled) return;
+      state.theme = (btn as HTMLElement).dataset.theme!;
+      paint();
+    });
+  });
+
+  // ── Image upload ──
+  async function uploadImage(purpose: string): Promise<void> {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/webp,image/gif,image/avif';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      setStatus('Uploading…');
+      try {
+        const initRes = await fetch('/api/uploads/init', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ purpose, contentType: file.type, size: file.size }),
+        });
+        const init = await initRes.json() as any;
+        if (!initRes.ok) { setStatus(init.error || 'Upload failed', false); return; }
+        const put = await fetch(init.uploadUrl, { method: 'PUT', headers: { 'Content-Type': init.contentType }, body: file });
+        if (!put.ok) { setStatus('Upload failed', false); return; }
+        if (purpose === 'avatar') state.avatar_r2_key = init.r2Key;
+        else state.background_image_r2_key = init.r2Key;
+        paint();
+        setStatus('Image added — Save to keep', true);
+      } catch { setStatus('Upload failed', false); }
+    };
+    input.click();
+  }
+  document.querySelectorAll('[data-upload]').forEach((b) =>
+    b.addEventListener('click', () => uploadImage((b as HTMLElement).dataset.upload!)));
+  document.querySelectorAll('[data-clear]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const which = (b as HTMLElement).dataset.clear!;
+      if (which === 'avatar') state.avatar_r2_key = null; else state.background_image_r2_key = null;
+      paint();
+    }));
+
+  // ── Socials editor ──
+  const socialsList = document.getElementById('socials-list')!;
+  function renderSocials() {
+    socialsList.innerHTML = '';
+    state.socials.forEach((s, i) => {
+      const row = document.createElement('div');
+      row.className = 'be-row';
+      row.innerHTML =
+        `<select data-si="${i}" class="be-select">${SOCIAL_OPTIONS.map((o) => `<option value="${o}"${o === s.name ? ' selected' : ''}>${o}</option>`).join('')}</select>` +
+        `<input data-su="${i}" type="text" placeholder="https://…" value="${s.url.replace(/"/g, '&quot;')}" />` +
+        `<button type="button" class="be-x" data-srm="${i}">×</button>`;
+      socialsList.appendChild(row);
+    });
+    socialsList.querySelectorAll('[data-si]').forEach((el) => el.addEventListener('change', () => {
+      state.socials[Number((el as HTMLElement).dataset.si)].name = (el as unknown as HTMLSelectElement).value; paint();
+    }));
+    socialsList.querySelectorAll('[data-su]').forEach((el) => el.addEventListener('input', () => {
+      state.socials[Number((el as HTMLElement).dataset.su)].url = (el as HTMLInputElement).value; paint();
+    }));
+    socialsList.querySelectorAll('[data-srm]').forEach((el) => el.addEventListener('click', () => {
+      state.socials.splice(Number((el as HTMLElement).dataset.srm), 1); renderSocials(); paint();
+    }));
+  }
+  document.getElementById('add-social')!.addEventListener('click', () => {
+    if (state.socials.length >= 8) return;
+    state.socials.push({ name: 'instagram', url: '' }); renderSocials(); paint();
+  });
+
+  // ── Links editor (per-row save/delete; drag reorder) ──
+  const linksList = document.getElementById('links-list')!;
+  function renderLinks() {
+    linksList.innerHTML = '';
+    state.links.forEach((l, i) => {
+      const row = document.createElement('div');
+      row.className = 'be-linkrow';
+      row.draggable = true;
+      row.dataset.idx = String(i);
+      row.innerHTML =
+        `<span class="be-drag" title="Drag to reorder">⋮⋮</span>` +
+        `<div class="be-linkfields">` +
+        `<input data-lt="${i}" type="text" placeholder="Title" value="${l.title.replace(/"/g, '&quot;')}" />` +
+        `<input data-lu="${i}" type="text" placeholder="https://…" value="${l.url.replace(/"/g, '&quot;')}" />` +
+        `<label class="be-feat"><input data-lf="${i}" type="checkbox"${l.is_featured ? ' checked' : ''}/> Featured</label>` +
+        `</div>` +
+        `<div class="be-linkbtns"><button type="button" class="be-save1" data-lsave="${i}">Save</button>` +
+        `<button type="button" class="be-x" data-ldel="${i}">×</button></div>`;
+      linksList.appendChild(row);
+    });
+    wireLinkRows();
+  }
+  function wireLinkRows() {
+    linksList.querySelectorAll('[data-lt]').forEach((el) => el.addEventListener('input', () => {
+      state.links[Number((el as HTMLElement).dataset.lt)].title = (el as HTMLInputElement).value; paint();
+    }));
+    linksList.querySelectorAll('[data-lu]').forEach((el) => el.addEventListener('input', () => {
+      state.links[Number((el as HTMLElement).dataset.lu)].url = (el as HTMLInputElement).value; paint();
+    }));
+    linksList.querySelectorAll('[data-lf]').forEach((el) => el.addEventListener('change', () => {
+      state.links[Number((el as HTMLElement).dataset.lf)].is_featured = (el as HTMLInputElement).checked; paint();
+    }));
+    linksList.querySelectorAll('[data-lsave]').forEach((el) => el.addEventListener('click', () => saveLink(Number((el as HTMLElement).dataset.lsave))));
+    linksList.querySelectorAll('[data-ldel]').forEach((el) => el.addEventListener('click', () => deleteLink(Number((el as HTMLElement).dataset.ldel))));
+    // drag reorder
+    let dragIdx = -1;
+    linksList.querySelectorAll('.be-linkrow').forEach((row) => {
+      row.addEventListener('dragstart', () => { dragIdx = Number((row as HTMLElement).dataset.idx); });
+      row.addEventListener('dragover', (e) => e.preventDefault());
+      row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const to = Number((row as HTMLElement).dataset.idx);
+        if (dragIdx < 0 || dragIdx === to) return;
+        const [moved] = state.links.splice(dragIdx, 1);
+        state.links.splice(to, 0, moved);
+        renderLinks(); paint(); reorderLinks();
+      });
+    });
+  }
+  async function saveLink(i: number) {
+    const l = state.links[i];
+    setStatus('Saving link…');
+    try {
+      const res = await fetch('/api/builder/links', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'upsert', id: l.id ?? 0, title: l.title, url: l.url, is_featured: l.is_featured }),
+      });
+      const data = await res.json() as any;
+      if (!res.ok) { setStatus(data.error || 'Failed', false); return; }
+      if (data.id) l.id = data.id;
+      setStatus('Link saved', true);
+    } catch { setStatus('Network error', false); }
+  }
+  async function deleteLink(i: number) {
+    const l = state.links[i];
+    if (l.id) {
+      try { await fetch('/api/builder/links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'delete', id: l.id }) }); } catch {}
+    }
+    state.links.splice(i, 1); renderLinks(); paint();
+  }
+  async function reorderLinks() {
+    const ids = state.links.map((l) => l.id).filter((x): x is number => !!x);
+    if (ids.length < 2) return;
+    try { await fetch('/api/builder/links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'reorder', ids }) }); } catch {}
+  }
+  document.getElementById('add-link')!.addEventListener('click', () => {
+    state.links.push({ id: null, title: '', url: '', is_featured: false }); renderLinks(); paint();
+  });
+
+  // ── Save profile (name/subtitle/bio/theme/images/socials) ──
+  document.getElementById('save-profile')!.addEventListener('click', async () => {
+    setStatus('Saving…');
+    try {
+      const res = await fetch('/api/builder/profile', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          display_name: state.display_name, subtitle: state.subtitle, bio: state.bio,
+          theme: state.theme, avatar_r2_key: state.avatar_r2_key,
+          background_image_r2_key: state.background_image_r2_key,
+          socials: state.socials.filter((s) => s.url.trim()),
+        }),
+      });
+      const data = await res.json() as any;
+      if (!res.ok) { setStatus(data.error || 'Failed', false); return; }
+      setStatus('Saved ✓', true);
+    } catch { setStatus('Network error', false); }
+  });
+
+  // ── Device toggle ──
+  document.querySelectorAll('.bp-dev').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.bp-dev').forEach((x) => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('preview-frame')!.className = 'bp-frame ' + (b as HTMLElement).dataset.dev;
+  }));
+
+  renderSocials();
+  renderLinks();
+  paint();
+</script>
+
+<style>
+  .builder { display: grid; grid-template-columns: 1fr 420px; gap: 0; min-height: calc(100dvh - 64px); }
+  .builder-editor { padding: 1.5rem clamp(1rem, 3vw, 2rem); overflow-y: auto; border-right: 1px solid var(--border); }
+  .be-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .be-head h1 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; margin: 0; }
+  .be-public { font-size: 0.82rem; color: var(--accent); }
+  .be-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.2rem; margin-bottom: 1rem; }
+  .be-card h2 { font-family: var(--font-display); font-size: 1rem; font-weight: 700; margin: 0 0 0.85rem; }
+  .be-hint { color: var(--muted-2); font-weight: 400; font-size: 0.78rem; }
+  .be-label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin: 0.7rem 0 0.3rem; }
+  .be-card textarea { width: 100%; padding: 0.7rem 0.9rem; border: 1px solid var(--border-hi); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-family: var(--font); font-size: 0.9rem; resize: vertical; }
+  .be-images { display: flex; gap: 1.5rem; }
+  .be-img-field { display: flex; flex-direction: column; gap: 0.35rem; align-items: flex-start; }
+  .be-img-btn, .be-img-clear, .be-add, .be-save1 { font-size: 0.78rem; padding: 0.4rem 0.8rem; }
+  .be-img-clear { background: transparent; }
+  .be-themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 0.6rem; }
+  .be-theme { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.5rem; border: 1px solid var(--border-hi); border-radius: var(--radius-sm); background: transparent; cursor: pointer; align-items: stretch; }
+  .be-theme.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .be-theme:disabled { opacity: 0.5; cursor: not-allowed; }
+  .be-theme-sw { height: 34px; border-radius: 8px; background: var(--sw-cover, var(--sw-bg)); border: 1px solid rgba(255,255,255,.1); }
+  .be-theme-name { font-size: 0.72rem; color: var(--text-dim); text-align: center; }
+  .be-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; }
+  .be-select { flex: 0 0 110px; padding: 0.55rem; border: 1px solid var(--border-hi); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-family: var(--font); }
+  .be-row input { flex: 1; }
+  .be-x { flex: 0 0 auto; background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.6rem; }
+  .be-x:hover { border-color: var(--danger); color: var(--danger); }
+  .be-add { margin-top: 0.4rem; background: transparent; }
+  .be-linkrow { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.6rem; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 0.5rem; background: var(--bg); }
+  .be-drag { cursor: grab; color: var(--muted-3); user-select: none; padding-top: 0.5rem; }
+  .be-linkfields { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
+  .be-feat { font-size: 0.78rem; color: var(--muted); display: flex; align-items: center; gap: 0.4rem; }
+  .be-linkbtns { display: flex; flex-direction: column; gap: 0.35rem; }
+  .be-savebar { position: sticky; bottom: 0; background: var(--bg); padding: 1rem 0; display: flex; align-items: center; gap: 1rem; }
+  .be-savebar .btn-primary { padding: 0.7rem 1.8rem; }
+  .be-status { font-size: 0.82rem; color: var(--muted); }
+  .be-status[data-state='ok'] { color: var(--success); }
+  .be-status[data-state='err'] { color: var(--danger); }
+
+  .builder-preview { padding: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; background: #0a0908; }
+  .bp-toggle { display: inline-flex; border: 1px solid var(--border-hi); border-radius: var(--radius-pill); overflow: hidden; }
+  .bp-dev { background: transparent; border: none; border-radius: 0; padding: 0.45rem 1rem; font-size: 0.8rem; color: var(--muted); }
+  .bp-dev.active { background: var(--accent); color: #fff; }
+  .bp-frame { width: 100%; max-width: 390px; border: 1px solid var(--border-hi); border-radius: 24px; overflow: hidden; height: 760px; overflow-y: auto; }
+  .bp-frame.desktop { max-width: 100%; border-radius: 12px; }
+  .bp-frame .bio { min-height: 100%; }
+
+  @media (max-width: 900px) {
+    .builder { grid-template-columns: 1fr; }
+    .builder-editor { border-right: none; border-bottom: 1px solid var(--border); }
+    .bp-frame { height: 600px; }
+  }
+</style>

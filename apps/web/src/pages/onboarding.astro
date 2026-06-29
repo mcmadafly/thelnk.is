@@ -19,7 +19,7 @@ const existing = await env.DB.prepare(`SELECT username FROM profiles WHERE clerk
   .bind(clerkUserId)
   .first<{ username: string }>();
 if (existing) {
-  return Astro.redirect('/dashboard');
+  return Astro.redirect('/builder');
 }
 
 const host = env.PUBLIC_APP_ORIGIN.replace(/\/+$/, '').replace(/^https?:\/\//, '');
@@ -120,7 +120,7 @@ const prefill = (Astro.url.searchParams.get('u') ?? '').toLowerCase().replace(/[
         const data = (await res.json().catch(() => ({}))) as { username?: string; error?: string; reason?: string };
         if (res.ok) {
           try { localStorage.removeItem('thelnk_pending_username'); } catch {}
-          window.location.href = '/dashboard';
+          window.location.href = '/builder';
           return;
         }
         setStatus(data.reason ?? data.error ?? `Failed (${res.status})`, 'err');
