@@ -1,29 +1,44 @@
 // Client-side helpers shared by the admin builder pages (Appearance + Links).
-import { renderProfileHTML } from './profile-render';
+import { renderProfileHTML, type RenderItem } from './profile-render';
 import { themeStyle } from './themes';
 import { mediaUrl } from './media';
 
-export type Social = { name: string; url: string };
-export type BuilderLink = { id: number | null; title: string; url: string; is_featured: boolean };
+/** One row in the unified ordered list (links + socials share one collection). */
+export type BuilderItem = {
+  id: number | null;
+  type: 'link' | 'social';
+  title: string; // social: platform key; link: display title
+  url: string;
+  is_featured: boolean;
+};
 export type BuilderState = {
   username: string; display_name: string; subtitle: string; bio: string; theme: string;
   avatar_r2_key: string | null; background_image_r2_key: string | null;
-  socials: Social[]; links: BuilderLink[];
+  items: BuilderItem[];
 };
+
+/** Map editor items → pure render items (dropping anything not yet fillable). */
+export function toRenderItems(items: BuilderItem[]): RenderItem[] {
+  const out: RenderItem[] = [];
+  for (const it of items) {
+    if (it.type === 'social') {
+      if (it.title && it.url.trim()) out.push({ type: 'social', name: it.title, url: it.url });
+    } else if (it.title.trim() || it.url.trim()) {
+      out.push({ type: 'link', title: it.title, url: it.url, featured: it.is_featured });
+    }
+  }
+  return out;
+}
 
 /** Re-render the live preview (byte-identical to the public page via renderProfileHTML). */
 export function paintPreview(bioEl: HTMLElement, innerEl: HTMLElement, s: BuilderState): void {
-  const featured = s.links.filter((l) => l.is_featured).map((l) => ({ title: l.title, url: l.url }));
-  const links = s.links.filter((l) => !l.is_featured).map((l) => ({ title: l.title, url: l.url }));
   innerEl.innerHTML = renderProfileHTML({
     username: s.username,
     displayName: s.display_name || s.username,
     subtitle: s.subtitle,
     bio: s.bio,
     avatarSrc: mediaUrl(s.avatar_r2_key),
-    socials: s.socials,
-    featured,
-    links,
+    items: toRenderItems(s.items),
   });
   const bg = mediaUrl(s.background_image_r2_key);
   const base = themeStyle(s.theme);
@@ -58,14 +73,13 @@ export async function uploadImage(purpose: 'avatar' | 'background'): Promise<str
   });
 }
 
-/** Save the profile section (full payload — both pages send the complete profile so neither clobbers the other). */
+/** Save the profile section (Appearance). Links/socials save per-row via /api/builder/links. */
 export async function saveProfile(s: BuilderState): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch('/api/builder/profile', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       display_name: s.display_name, subtitle: s.subtitle, bio: s.bio, theme: s.theme,
       avatar_r2_key: s.avatar_r2_key, background_image_r2_key: s.background_image_r2_key,
-      socials: s.socials.filter((x) => x.url.trim()),
     }),
   });
   const data = (await res.json().catch(() => ({}))) as any;

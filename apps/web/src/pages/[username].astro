@@ -4,14 +4,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import '../styles/profile.css';
 import { validateUsername } from '../lib/username';
 import { themeStyle } from '../lib/themes';
-import { renderProfileHTML, type RenderLink } from '../lib/profile-render';
+import { renderProfileHTML, type RenderItem } from '../lib/profile-render';
 
 export const prerender = false;
 
 type ProfileRow = {
   id: number; username: string; display_name: string | null; subtitle: string | null;
   bio: string | null; avatar_r2_key: string | null; background_image_r2_key: string | null;
-  theme: string; socials: string | null;
+  theme: string;
 };
 
 // Defense in depth: reserved/invalid segment can never resolve a profile.
@@ -19,27 +19,23 @@ const check = validateUsername(Astro.params.username ?? '');
 if (!check.ok) return new Response('Not found', { status: 404 });
 
 const profile = await env.DB.prepare(
-  `SELECT id, username, display_name, subtitle, bio, avatar_r2_key, background_image_r2_key, theme, socials
+  `SELECT id, username, display_name, subtitle, bio, avatar_r2_key, background_image_r2_key, theme
    FROM profiles WHERE username = ? COLLATE NOCASE`,
 ).bind(check.username).first<ProfileRow>();
 if (!profile) return new Response('Not found', { status: 404 });
 
-const linkRows = (await env.DB.prepare(
-  `SELECT title, url, is_featured FROM profile_links
+// Single ordered list: links + socials interleaved by the creator's chosen order.
+const itemRows = (await env.DB.prepare(
+  `SELECT type, title, url, is_featured FROM profile_links
    WHERE profile_id = ? AND is_visible = 1
-   ORDER BY is_featured DESC, sort_order ASC, id ASC`,
-).bind(profile.id).all<{ title: string; url: string; is_featured: number }>()).results ?? [];
+   ORDER BY sort_order ASC, id ASC`,
+).bind(profile.id).all<{ type: string; title: string; url: string; is_featured: number }>()).results ?? [];
 
-const featured: RenderLink[] = linkRows.filter((l) => l.is_featured).map((l) => ({ title: l.title, url: l.url }));
-const links: RenderLink[] = linkRows.filter((l) => !l.is_featured).map((l) => ({ title: l.title, url: l.url }));
-
-let socials: { name: string; url: string }[] = [];
-if (profile.socials) {
-  try {
-    const p = JSON.parse(profile.socials);
-    if (Array.isArray(p)) socials = p.filter((s) => s && typeof s.name === 'string' && typeof s.url === 'string');
-  } catch { /* ignore */ }
-}
+const items: RenderItem[] = itemRows.map((r) =>
+  r.type === 'social'
+    ? { type: 'social', name: r.title, url: r.url }
+    : { type: 'link', title: r.title, url: r.url, featured: !!r.is_featured },
+);
 
 const mediaUrl = (key: string | null): string | null =>
   !key ? null : /^(https?:)?\//.test(key) ? key : `/api/media/${key}`;
@@ -56,9 +52,7 @@ const innerHtml = renderProfileHTML({
   subtitle: profile.subtitle,
   bio: profile.bio,
   avatarSrc: mediaUrl(profile.avatar_r2_key),
-  socials,
-  featured,
-  links,
+  items,
 });
 
 const pageTitle = `${displayName} · thelnk.is`;

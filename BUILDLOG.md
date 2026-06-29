@@ -4,6 +4,31 @@ Built in public, one release at a time. Newest first.
 
 ---
 
+## v0.3 — Admin redesign (2026-06-29)
+
+A ground-up redesign of the admin into a Linktree-style dashboard, plus a reworked builder.
+
+**Shipped**
+- **New admin shell** — sidebar nav (Links, Appearance, Analytics, plus Media kit / Wallet stubs),
+  top bar, fully responsive, with a **light/dark toggle** (matches system, remembers your choice).
+- **Design system** — Tailwind v4 + shadcn "New-York" tokens (orange primary), an Astro-native UI
+  kit (Button, Card, Badge, Select, Tabs, Avatar, icons) — no React.
+- **Overview / Analytics page** — metric cards + hand-rolled SVG charts (sample data; real pipeline TBD).
+- **Builder re-homed** into the shell, split into **Appearance** (profile, images, themes) and
+  **Links**, with the live preview centered alongside the editor.
+- **Unified links + socials** — one ordered list; an item's type (link/social) only controls how it
+  renders. Consecutive social icons group onto a row; a link between two socials splits them.
+  Drag-to-reorder with a dashed drop-zone indicator; edits auto-save.
+- Migration `0010_unify_links_socials.sql` — moves legacy `profiles.socials` JSON into the single
+  `profile_links` list (`type='social'`).
+
+**Internals:** `profile-render.ts` now renders one ordered `items[]` (byte-identical SSR + live
+preview); socials persist as `profile_links` rows instead of a JSON column.
+
+**Next:** Phase B (posts + product blocks), Phase C (Stripe Connect checkout + 6%/4% fees).
+
+---
+
 ## v0.2 — The builder (2026-06-28)
 
 The core tool: a visual builder that replaces the placeholder dashboard. Edit on the left,

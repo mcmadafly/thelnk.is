@@ -1,10 +1,13 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { normalizeHttpUrl } from '../../../lib/urls';
+import { SOCIAL_NAMES } from '../../../lib/profile-render';
 import { devDetail } from '../../../lib/dev-detail';
 import { devClerkUserId } from '../../../lib/dev-auth';
 
 export const prerender = false;
+
+const ALLOWED_SOCIALS = new Set(SOCIAL_NAMES);
 
 async function profileIdFor(clerkUserId: string): Promise<number | null> {
   const row = await env.DB.prepare(`SELECT id FROM profiles WHERE clerk_user_id = ?`)
@@ -30,19 +33,29 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   try {
     if (op === 'upsert') {
-      const title = String(b.title ?? '').trim().slice(0, 120);
+      const type = b.type === 'social' ? 'social' : 'link';
       const url = normalizeHttpUrl(String(b.url ?? ''));
-      const isFeatured = b.is_featured ? 1 : 0;
-      if (!title) return Response.json({ error: 'Title is required' }, { status: 400 });
       if (!url) return Response.json({ error: 'Enter a valid URL' }, { status: 400 });
+
+      // For socials, `title` carries the platform key (drives the icon). For links it's the label.
+      let title: string;
+      let isFeatured = 0;
+      if (type === 'social') {
+        title = String(b.title ?? '').trim().toLowerCase();
+        if (!ALLOWED_SOCIALS.has(title)) return Response.json({ error: 'Unknown social platform' }, { status: 400 });
+      } else {
+        title = String(b.title ?? '').trim().slice(0, 120);
+        if (!title) return Response.json({ error: 'Title is required' }, { status: 400 });
+        isFeatured = b.is_featured ? 1 : 0;
+      }
 
       const id = Number(b.id ?? 0);
       if (id > 0) {
         const res = await env.DB.prepare(
-          `UPDATE profile_links SET title = ?, url = ?, is_featured = ?, type = 'link', updated_at = ?
+          `UPDATE profile_links SET title = ?, url = ?, is_featured = ?, type = ?, updated_at = ?
            WHERE id = ? AND profile_id = ?`,
-        ).bind(title, url, isFeatured, now, id, profileId).run();
-        if (!res.meta?.changes) return Response.json({ error: 'Link not found' }, { status: 404 });
+        ).bind(title, url, isFeatured, type, now, id, profileId).run();
+        if (!res.meta?.changes) return Response.json({ error: 'Item not found' }, { status: 404 });
         return Response.json({ ok: true, id });
       }
 
@@ -52,8 +65,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const sortOrder = next?.n ?? 0;
       const ins = await env.DB.prepare(
         `INSERT INTO profile_links (profile_id, type, title, url, sort_order, is_visible, is_featured, created_at, updated_at)
-         VALUES (?, 'link', ?, ?, ?, 1, ?, ?, ?)`,
-      ).bind(profileId, title, url, sortOrder, isFeatured, now, now).run();
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+      ).bind(profileId, type, title, url, sortOrder, isFeatured, now, now).run();
       return Response.json({ ok: true, id: ins.meta?.last_row_id ?? null });
     }
 

@@ -21,30 +21,22 @@ const avatarSrc = mediaUrl(state.avatar_r2_key);
 <AdminLayout title="Links" active="links" username={state.username} avatarSrc={avatarSrc}>
   <Fragment slot="actions">
     <span id="save-status" class="text-xs text-muted-foreground"></span>
-    <Button id="save-socials" size="sm">Save socials</Button>
   </Fragment>
 
-  <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
     <div class="max-w-xl space-y-6">
       <Card class="p-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-sm font-semibold">Links</h2>
-            <p class="mt-0.5 text-xs text-muted-foreground">Drag to reorder · star to feature · edits save automatically</p>
-          </div>
-          <Button id="add-link" variant="outline" size="sm"><Icon name="plus" size={14} /> Add link</Button>
+        <div>
+          <h2 class="text-sm font-semibold">Your page</h2>
+          <p class="mt-0.5 text-xs text-muted-foreground">Drag to reorder · star to feature · edits save automatically</p>
         </div>
-        <div id="links-list" class="mt-4 space-y-2"></div>
-        <p id="links-empty" class="mt-4 hidden text-sm text-muted-foreground">No links yet — add your first one.</p>
-      </Card>
-
-      <Card class="p-6">
-        <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold">Social icons</h2>
-          <Button id="add-social" variant="outline" size="sm"><Icon name="plus" size={14} /> Add social</Button>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <Button id="add-link" variant="outline" size="lg" class="w-full text-sm"><Icon name="plus" size={18} /> Add link</Button>
+          <Button id="add-social" variant="outline" size="lg" class="w-full text-sm"><Icon name="plus" size={18} /> Add social</Button>
         </div>
-        <div id="socials-list" class="mt-4 space-y-2"></div>
-        <p id="socials-empty" class="mt-4 hidden text-sm text-muted-foreground">No socials yet.</p>
+        <div id="items-list" class="mt-4 space-y-2"></div>
+        <p id="items-empty" class="mt-4 text-sm text-muted-foreground">Nothing here yet — add a link or social icon.</p>
+        <p class="mt-3 text-xs text-muted-foreground">Tip: consecutive social icons group onto one row. Put a link between two socials to split them.</p>
       </Card>
     </div>
 
@@ -55,119 +47,171 @@ const avatarSrc = mediaUrl(state.avatar_r2_key);
   <script id="social-names" type="application/json" set:html={JSON.stringify(SOCIAL_NAMES)}></script>
 
   <script>
-    import { paintPreview, saveProfile, type BuilderState } from '../../lib/builder-preview';
+    import { paintPreview, type BuilderState, type BuilderItem } from '../../lib/builder-preview';
 
     const state = JSON.parse(document.getElementById('builder-state')!.textContent!) as BuilderState;
     const SOCIALS = JSON.parse(document.getElementById('social-names')!.textContent!) as string[];
     const bioEl = document.getElementById('preview-bio') as HTMLElement;
     const innerEl = document.getElementById('preview-inner') as HTMLElement;
     const statusEl = document.getElementById('save-status')!;
+    const listEl = document.getElementById('items-list')!;
+    const emptyEl = document.getElementById('items-empty')!;
     const paint = () => paintPreview(bioEl, innerEl, state);
     const status = (t: string) => { statusEl.textContent = t; };
     const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
-    // ── Links API ──
     async function api(payload: Record<string, unknown>) {
       const res = await fetch('/api/builder/links', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
       return { ok: res.ok, data: (await res.json().catch(() => ({}))) as any };
     }
-    async function saveLink(i: number) {
-      const l = state.links[i];
-      if (!l || !l.title.trim() || !l.url.trim()) return;
+
+    // Save a single row once it has enough to persist (link: title+url, social: url).
+    async function saveItem(i: number) {
+      const it = state.items[i];
+      if (!it) return;
+      if (it.type === 'social') { if (!it.url.trim()) return; }
+      else if (!it.title.trim() || !it.url.trim()) return;
       status('Saving…');
-      const { ok, data } = await api({ op: 'upsert', id: l.id || 0, title: l.title, url: l.url, is_featured: l.is_featured });
-      if (ok) { if (data.id) l.id = data.id; status('Saved ✓'); } else status(data.error || 'Could not save');
+      const { ok, data } = await api({
+        op: 'upsert', id: it.id || 0, type: it.type, title: it.title, url: it.url, is_featured: it.is_featured,
+      });
+      if (ok) { if (data.id) it.id = data.id; status('Saved ✓'); } else status(data.error || 'Could not save');
     }
-    async function deleteLink(i: number) {
-      const l = state.links[i];
-      if (l?.id) await api({ op: 'delete', id: l.id });
-      state.links.splice(i, 1);
-      renderLinks(); paint();
+    async function deleteItem(i: number) {
+      const it = state.items[i];
+      if (it?.id) await api({ op: 'delete', id: it.id });
+      state.items.splice(i, 1);
+      render(); paint();
     }
     async function saveOrder() {
-      const ids = state.links.filter((l) => l.id).map((l) => l.id);
+      const ids = state.items.filter((it) => it.id).map((it) => it.id);
       if (ids.length) await api({ op: 'reorder', ids });
     }
 
-    const linksList = document.getElementById('links-list')!;
-    const linksEmpty = document.getElementById('links-empty')!;
     let dragFrom = -1;
 
-    function renderLinks() {
-      linksEmpty.classList.toggle('hidden', state.links.length > 0);
-      linksList.innerHTML = state.links.map((l, i) => `
-        <div class="link-row flex items-center gap-2 rounded-lg border bg-background p-2" draggable="true" data-idx="${i}">
-          <span class="drag-handle cursor-grab select-none px-1 text-muted-foreground" title="Drag to reorder">⠿</span>
+    // ── Drag-and-drop with a live drop indicator ──
+    let indicator: HTMLElement | null = null;
+    const getIndicator = (): HTMLElement => {
+      if (!indicator) { indicator = document.createElement('div'); indicator.className = 'h-12 rounded-lg border-2 border-dashed border-primary/60 bg-transparent'; }
+      return indicator;
+    };
+    const clearIndicator = () => indicator?.remove();
+    /** Array index the dragged row would drop into, from the cursor's Y position. */
+    const dropTargetIndex = (y: number): number => {
+      const rows = Array.from(listEl.querySelectorAll<HTMLElement>('.item-row'));
+      for (const r of rows) {
+        const box = r.getBoundingClientRect();
+        if (y < box.top + box.height / 2) return Number(r.dataset.idx);
+      }
+      return state.items.length;
+    };
+    listEl.addEventListener('dragover', (e) => {
+      if (dragFrom < 0) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      const idx = dropTargetIndex(e.clientY);
+      const targetRow = listEl.querySelector<HTMLElement>(`.item-row[data-idx="${idx}"]`);
+      listEl.insertBefore(getIndicator(), targetRow); // null targetRow → appends at end
+    });
+    listEl.addEventListener('dragleave', (e) => {
+      if (!listEl.contains(e.relatedTarget as Node)) clearIndicator();
+    });
+    listEl.addEventListener('drop', (e) => {
+      if (dragFrom < 0) return;
+      e.preventDefault();
+      let to = dropTargetIndex(e.clientY);
+      clearIndicator();
+      const from = dragFrom;
+      dragFrom = -1;
+      const [moved] = state.items.splice(from, 1);
+      if (from < to) to--;
+      state.items.splice(to, 0, moved);
+      render(); paint(); saveOrder();
+    });
+
+    function rowHtml(it: BuilderItem, i: number): string {
+      const handle = `<span class="drag-handle shrink-0 cursor-grab select-none rounded px-1 text-lg leading-none text-muted-foreground hover:text-foreground" draggable="true" title="Drag to reorder">⠿</span>`;
+      const del = `<button class="row-delete rounded-md p-1.5 text-muted-foreground hover:text-destructive" title="Delete">✕</button>`;
+      const badge = (label: string) =>
+        `<span class="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">${label}</span>`;
+      const inputCls = 'h-8 rounded-md border bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+      if (it.type === 'social') {
+        const opts = SOCIALS.map((n) => `<option value="${n}" ${n === it.title ? 'selected' : ''}>${n}</option>`).join('');
+        return `<div class="item-row flex items-center gap-2 rounded-lg border bg-background p-2" data-idx="${i}">
+            ${handle}${badge('Social')}
+            <select class="row-platform ${inputCls} capitalize">${opts}</select>
+            <input class="row-url ${inputCls} flex-1" placeholder="https://" value="${esc(it.url)}" />
+            ${del}
+          </div>`;
+      }
+      return `<div class="item-row flex items-center gap-2 rounded-lg border bg-background p-2" data-idx="${i}">
+          ${handle}${badge('Link')}
           <div class="grid flex-1 gap-2 sm:grid-cols-2">
-            <input class="row-title h-8 rounded-md border bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="Title" value="${esc(l.title)}" />
-            <input class="row-url h-8 rounded-md border bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="https://" value="${esc(l.url)}" />
+            <input class="row-title ${inputCls}" placeholder="Title" value="${esc(it.title)}" />
+            <input class="row-url ${inputCls}" placeholder="https://" value="${esc(it.url)}" />
           </div>
-          <button class="row-feature rounded-md p-1.5 text-base leading-none ${l.is_featured ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}" title="Feature">${l.is_featured ? '★' : '☆'}</button>
-          <button class="row-delete rounded-md p-1.5 text-muted-foreground hover:text-destructive" title="Delete">✕</button>
-        </div>`).join('');
+          <button class="row-feature rounded-md p-1.5 text-base leading-none ${it.is_featured ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}" title="Feature">${it.is_featured ? '★' : '☆'}</button>
+          ${del}
+        </div>`;
+    }
 
-      linksList.querySelectorAll<HTMLElement>('.link-row').forEach((row) => {
+    function render() {
+      emptyEl.classList.toggle('hidden', state.items.length > 0);
+      listEl.innerHTML = state.items.map((it, i) => rowHtml(it, i)).join('');
+
+      listEl.querySelectorAll<HTMLElement>('.item-row').forEach((row) => {
         const i = Number(row.dataset.idx);
-        row.querySelector<HTMLInputElement>('.row-title')!.addEventListener('input', (e) => { state.links[i].title = (e.target as HTMLInputElement).value; paint(); });
-        row.querySelector<HTMLInputElement>('.row-title')!.addEventListener('blur', () => saveLink(i));
-        row.querySelector<HTMLInputElement>('.row-url')!.addEventListener('input', (e) => { state.links[i].url = (e.target as HTMLInputElement).value; paint(); });
-        row.querySelector<HTMLInputElement>('.row-url')!.addEventListener('blur', () => saveLink(i));
-        row.querySelector('.row-feature')!.addEventListener('click', () => { state.links[i].is_featured = !state.links[i].is_featured; renderLinks(); paint(); saveLink(i); });
-        row.querySelector('.row-delete')!.addEventListener('click', () => deleteLink(i));
-        row.addEventListener('dragstart', () => { dragFrom = i; });
-        row.addEventListener('dragover', (e) => e.preventDefault());
-        row.addEventListener('drop', (e) => {
-          e.preventDefault();
-          if (dragFrom < 0 || dragFrom === i) return;
-          const [moved] = state.links.splice(dragFrom, 1);
-          state.links.splice(i, 0, moved);
-          dragFrom = -1;
-          renderLinks(); paint(); saveOrder();
+        const it = state.items[i];
+        const url = row.querySelector<HTMLInputElement>('.row-url')!;
+        url.addEventListener('input', (e) => { it.url = (e.target as HTMLInputElement).value; paint(); });
+        url.addEventListener('blur', () => saveItem(i));
+
+        if (it.type === 'social') {
+          const sel = row.querySelector('.row-platform') as unknown as HTMLSelectElement;
+          sel.addEventListener('change', (e) => { it.title = (e.target as HTMLSelectElement).value; paint(); saveItem(i); });
+        } else {
+          const title = row.querySelector<HTMLInputElement>('.row-title')!;
+          title.addEventListener('input', (e) => { it.title = (e.target as HTMLInputElement).value; paint(); });
+          title.addEventListener('blur', () => saveItem(i));
+          row.querySelector('.row-feature')!.addEventListener('click', () => {
+            it.is_featured = !it.is_featured; render(); paint(); saveItem(i);
+          });
+        }
+        row.querySelector('.row-delete')!.addEventListener('click', () => deleteItem(i));
+
+        const handle = row.querySelector('.drag-handle') as HTMLElement;
+        handle.addEventListener('dragstart', (e) => {
+          const ev = e as DragEvent;
+          dragFrom = i;
+          row.classList.add('opacity-40');
+          if (ev.dataTransfer) {
+            ev.dataTransfer.effectAllowed = 'move';
+            ev.dataTransfer.setData('text/plain', String(i));
+            ev.dataTransfer.setDragImage(row, 16, 16);
+          }
         });
+        handle.addEventListener('dragend', () => { row.classList.remove('opacity-40'); clearIndicator(); dragFrom = -1; });
       });
     }
 
-    document.getElementById('add-link')!.addEventListener('click', () => {
-      state.links.push({ id: null, title: '', url: '', is_featured: false });
-      renderLinks(); paint();
-      const last = linksList.querySelector<HTMLInputElement>('.link-row:last-child .row-title');
+    function addItem(type: 'link' | 'social') {
+      state.items.push(
+        type === 'social'
+          ? { id: null, type: 'social', title: SOCIALS[0], url: '', is_featured: false }
+          : { id: null, type: 'link', title: '', url: '', is_featured: false },
+      );
+      render(); paint();
+      const last = listEl.querySelector<HTMLInputElement>('.item-row:last-child input');
       last?.focus();
-    });
-
-    // ── Socials ──
-    const socialsList = document.getElementById('socials-list')!;
-    const socialsEmpty = document.getElementById('socials-empty')!;
-    function renderSocials() {
-      socialsEmpty.classList.toggle('hidden', state.socials.length > 0);
-      socialsList.innerHTML = state.socials.map((s, i) => `
-        <div class="social-row flex items-center gap-2 rounded-lg border bg-background p-2" data-idx="${i}">
-          <select class="row-name h-8 rounded-md border bg-background px-2 text-sm capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            ${SOCIALS.map((n) => `<option value="${n}" ${n === s.name ? 'selected' : ''}>${n}</option>`).join('')}
-          </select>
-          <input class="row-surl h-8 flex-1 rounded-md border bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="https://" value="${esc(s.url)}" />
-          <button class="srow-delete rounded-md p-1.5 text-muted-foreground hover:text-destructive" title="Remove">✕</button>
-        </div>`).join('');
-      socialsList.querySelectorAll<HTMLElement>('.social-row').forEach((row) => {
-        const i = Number(row.dataset.idx);
-        (row.querySelector('.row-name') as unknown as HTMLSelectElement).addEventListener('change', (e) => { state.socials[i].name = (e.target as HTMLSelectElement).value; paint(); });
-        row.querySelector<HTMLInputElement>('.row-surl')!.addEventListener('input', (e) => { state.socials[i].url = (e.target as HTMLInputElement).value; paint(); });
-        row.querySelector('.srow-delete')!.addEventListener('click', () => { state.socials.splice(i, 1); renderSocials(); paint(); });
-      });
     }
-    document.getElementById('add-social')!.addEventListener('click', () => {
-      state.socials.push({ name: SOCIALS[0], url: '' });
-      renderSocials(); paint();
-    });
-    document.getElementById('save-socials')!.addEventListener('click', async () => {
-      status('Saving…');
-      const r = await saveProfile(state);
-      status(r.ok ? 'Saved ✓' : (r.error || 'Could not save'));
-    });
+    document.getElementById('add-link')!.addEventListener('click', () => addItem('link'));
+    document.getElementById('add-social')!.addEventListener('click', () => addItem('social'));
 
-    renderLinks();
-    renderSocials();
+    render();
     paint();
   </script>
 </AdminLayout>

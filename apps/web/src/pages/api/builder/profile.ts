@@ -2,14 +2,11 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { isPremiumClerkUser } from '../../../lib/plan';
 import { isThemeAllowed, getTheme } from '../../../lib/themes';
-import { normalizeHttpUrl } from '../../../lib/urls';
-import { SOCIAL_NAMES } from '../../../lib/profile-render';
 import { devDetail } from '../../../lib/dev-detail';
 import { devClerkUserId } from '../../../lib/dev-auth';
 
 export const prerender = false;
 
-const ALLOWED_SOCIALS = new Set(SOCIAL_NAMES);
 const MEDIA_KEY_RE = /^(avatar|background)\/[a-z0-9]{24}$/;
 
 function clip(v: unknown, max: number): string | null {
@@ -48,26 +45,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
   const theme = getTheme(themeId).id;
 
-  // Socials: known platform + valid URL, capped at 8.
-  let socialsJson: string | null = null;
-  if (Array.isArray(b.socials)) {
-    const clean = (b.socials as unknown[])
-      .map((s) => (s ?? {}) as Record<string, unknown>)
-      .map((s) => ({ name: String(s.name ?? ''), url: normalizeHttpUrl(String(s.url ?? '')) }))
-      .filter((s): s is { name: string; url: string } => ALLOWED_SOCIALS.has(s.name) && !!s.url)
-      .slice(0, 8);
-    socialsJson = clean.length ? JSON.stringify(clean) : null;
-  }
-
+  // Socials now live in the unified profile_links list (saved via /api/builder/links),
+  // so this endpoint only owns the profile fields.
   const now = Math.floor(Date.now() / 1000);
   try {
     const res = await env.DB.prepare(
       `UPDATE profiles SET
-         display_name = ?, subtitle = ?, bio = ?, theme = ?, socials = ?,
+         display_name = ?, subtitle = ?, bio = ?, theme = ?,
          avatar_r2_key = ?, background_image_r2_key = ?, updated_at = ?
        WHERE clerk_user_id = ?`,
     )
-      .bind(displayName, subtitle, bio, theme, socialsJson, avatarKey, backgroundKey, now, clerkUserId)
+      .bind(displayName, subtitle, bio, theme, avatarKey, backgroundKey, now, clerkUserId)
       .run();
 
     if (!res.meta?.changes) {
