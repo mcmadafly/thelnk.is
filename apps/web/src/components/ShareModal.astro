@@ -1,0 +1,200 @@
+---
+// Public "Share this page" button + modal (Linktree-style). Self-contained: static markup
+// so scoped styles apply; a small inline script wires copy / native share / open-close.
+import { siX, siFacebook, siWhatsapp, siTelegram } from 'simple-icons';
+import { avatarBackground, avatarInitial } from '../lib/avatar';
+
+interface Props {
+  username: string;
+  displayName: string;
+  avatarSrc?: string | null;
+  profileUrl: string;
+}
+const { username, displayName, avatarSrc = null, profileUrl } = Astro.props;
+
+// simple-icons dropped LinkedIn's mark (brand policy) — use the standard glyph path.
+const LINKEDIN_PATH =
+  'M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z';
+const u = encodeURIComponent(profileUrl);
+const text = encodeURIComponent(`Check out ${displayName} on thelnk.is`);
+const nets = [
+  { key: 'x', label: 'X', color: '#000000', icon: siX.path, href: `https://twitter.com/intent/tweet?url=${u}&text=${text}` },
+  { key: 'facebook', label: 'Facebook', color: '#1877F2', icon: siFacebook.path, href: `https://www.facebook.com/sharer/sharer.php?u=${u}` },
+  { key: 'whatsapp', label: 'WhatsApp', color: '#25D366', icon: siWhatsapp.path, href: `https://wa.me/?text=${text}%20${u}` },
+  { key: 'linkedin', label: 'LinkedIn', color: '#0A66C2', icon: LINKEDIN_PATH, href: `https://www.linkedin.com/sharing/share-offsite/?url=${u}` },
+  { key: 'telegram', label: 'Telegram', color: '#26A5E4', icon: siTelegram.path, href: `https://t.me/share/url?url=${u}&text=${text}` },
+  { key: 'email', label: 'Email', color: '#6f6a62', icon: 'M1.5 4.5h21v15h-21zM1.5 5l10.5 8L22.5 5', href: `mailto:?subject=${text}&body=${u}`, stroke: true },
+];
+const initial = avatarInitial(displayName || username);
+---
+
+<button id="share-open" class="share-fab" type="button" aria-label="Share this page">
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+    <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" /><line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
+  </svg>
+  <span>Share</span>
+</button>
+
+<div id="share-overlay" class="share-overlay" hidden>
+  <div class="share-sheet" role="dialog" aria-modal="true" aria-label="Share this page">
+    <div class="share-head">
+      <span>Share</span>
+      <button id="share-close" class="share-x" type="button" aria-label="Close">✕</button>
+    </div>
+
+    <div class="share-card">
+      {avatarSrc
+        ? <div class="share-card-avatar" style={`background:url('${avatarSrc}') center/cover no-repeat`}></div>
+        : <div class="share-card-avatar" style={`background:${avatarBackground(username)}`}>{initial}</div>}
+      <div class="share-card-name">{displayName}</div>
+      <div class="share-card-handle">✱ thelnk.is/{username}</div>
+    </div>
+
+    <div class="share-actions">
+      <button class="share-act" type="button" data-share="copy">
+        <span class="share-ic" style="background:#3f3a33">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+        </span>
+        <span class="share-act-label" data-copy-label>Copy link</span>
+      </button>
+      <button class="share-act" type="button" data-share="native" hidden>
+        <span class="share-ic" style="background:#f97316">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+        </span>
+        <span class="share-act-label">Share…</span>
+      </button>
+      {nets.map((n) => (
+        <a class="share-act" href={n.href} target="_blank" rel="noopener noreferrer">
+          <span class="share-ic" style={`background:${n.color}`}>
+            {(n as { stroke?: boolean }).stroke
+              ? <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={n.icon} /></svg>
+              : <svg role="img" viewBox="0 0 24 24" width="20" height="20" fill="#fff" aria-hidden="true"><path d={n.icon} /></svg>}
+          </span>
+          <span class="share-act-label">{n.label}</span>
+        </a>
+      ))}
+    </div>
+
+    <div class="share-foot">
+      <span>Your link, everywhere.</span>
+      <a href="/">Get your own thelnk<span class="dot">.is</span></a>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ profileUrl, shareTitle: displayName }}>
+  (function () {
+    const open = document.getElementById('share-open');
+    const overlay = document.getElementById('share-overlay');
+    const closeBtn = document.getElementById('share-close');
+    if (!open || !overlay) return;
+    const show = () => { overlay.hidden = false; document.body.style.overflow = 'hidden'; };
+    const hide = () => { overlay.hidden = true; document.body.style.overflow = ''; };
+    open.addEventListener('click', show);
+    closeBtn && closeBtn.addEventListener('click', hide);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) hide(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !overlay.hidden) hide(); });
+
+    const copyBtn = overlay.querySelector('[data-share="copy"]');
+    copyBtn && copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(profileUrl);
+        const label = copyBtn.querySelector('[data-copy-label]');
+        if (label) { const prev = label.textContent; label.textContent = 'Copied!'; setTimeout(() => { label.textContent = prev; }, 1600); }
+      } catch (_) {}
+    });
+
+    const nativeBtn = overlay.querySelector('[data-share="native"]');
+    if (nativeBtn && navigator.share) {
+      nativeBtn.hidden = false;
+      nativeBtn.addEventListener('click', () => {
+        navigator.share({ title: shareTitle, url: profileUrl }).catch(() => {});
+      });
+    }
+  })();
+</script>
+
+<style>
+  .share-fab {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 15px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(20, 18, 15, 0.72);
+    backdrop-filter: blur(10px);
+    color: #f6f3ee;
+    font-family: 'Manrope', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, transform 0.12s;
+  }
+  .share-fab:hover { background: rgba(30, 27, 22, 0.9); border-color: rgba(255, 255, 255, 0.28); transform: translateY(-1px); }
+
+  .share-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+  }
+  .share-sheet {
+    width: 100%;
+    max-width: 440px;
+    background: #15130f;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.8);
+    font-family: 'Manrope', system-ui, sans-serif;
+    color: #f6f3ee;
+  }
+  .share-head { display: flex; align-items: center; justify-content: center; position: relative; font-family: 'Alexandria', system-ui, sans-serif; font-weight: 700; font-size: 1.1rem; padding: 0.25rem 0 0.75rem; }
+  .share-x { position: absolute; right: 0; top: 0; background: none; border: none; color: #a39c92; font-size: 1rem; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
+  .share-x:hover { background: rgba(255, 255, 255, 0.06); color: #f6f3ee; }
+
+  .share-card {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center;
+    background: linear-gradient(160deg, #2a251f, #17150f);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 26px 18px;
+    margin-bottom: 16px;
+  }
+  .share-card-avatar {
+    width: 92px; height: 92px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-family: 'Alexandria', system-ui, sans-serif; font-weight: 700; font-size: 2.2rem;
+    border: 3px solid rgba(255, 255, 255, 0.12);
+  }
+  .share-card-name { font-family: 'Alexandria', system-ui, sans-serif; font-weight: 700; font-size: 1.4rem; margin-top: 14px; }
+  .share-card-handle { font-family: 'Space Mono', monospace; font-size: 0.82rem; color: #a39c92; margin-top: 4px; }
+  .share-card-handle .dot { color: #f97316; }
+
+  .share-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px 6px;
+  }
+  .share-act { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; padding: 6px 2px; border-radius: 12px; }
+  .share-act:hover { background: rgba(255, 255, 255, 0.04); text-decoration: none; }
+  .share-ic { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .share-act-label { font-size: 0.72rem; font-weight: 600; color: #c9c3b8; }
+
+  .share-foot { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); text-align: center; font-size: 0.8rem; color: #8c867c; }
+  .share-foot a { display: block; margin-top: 4px; color: #ede8de; font-weight: 600; }
+  .share-foot .dot { color: #f97316; }
+  .share-foot a:hover { text-decoration: underline; }
+</style>

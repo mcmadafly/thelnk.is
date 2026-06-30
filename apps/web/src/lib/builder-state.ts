@@ -10,28 +10,46 @@ export type BuilderItem = {
   is_featured: boolean;
 };
 
+export type BuilderColors = {
+  primary: string | null;
+  secondary: string | null;
+  text: string | null;
+  background: string | null;
+};
 export type BuilderState = {
   username: string;
   display_name: string;
   subtitle: string;
   bio: string;
   theme: string;
+  corners: string;
+  colors: BuilderColors;
   avatar_r2_key: string | null;
   background_image_r2_key: string | null;
   items: BuilderItem[];
 };
 
+function parseColors(raw: string | null): BuilderColors {
+  const empty: BuilderColors = { primary: null, secondary: null, text: null, background: null };
+  if (!raw) return empty;
+  try {
+    const o = JSON.parse(raw) as Record<string, unknown>;
+    const pick = (k: string) => (typeof o[k] === 'string' ? (o[k] as string) : null);
+    return { primary: pick('primary'), secondary: pick('secondary'), text: pick('text'), background: pick('background') };
+  } catch { return empty; }
+}
+
 /** Loads the full editor state (profile + the single ordered links/socials list) for a creator. */
 export async function loadBuilderState(clerkUserId: string): Promise<BuilderState | null> {
   const p = await env.DB.prepare(
-    `SELECT id, username, display_name, subtitle, bio, avatar_r2_key, background_image_r2_key, theme
+    `SELECT id, username, display_name, subtitle, bio, avatar_r2_key, background_image_r2_key, theme, corners, colors
      FROM profiles WHERE clerk_user_id = ?`,
   )
     .bind(clerkUserId)
     .first<{
       id: number; username: string; display_name: string | null; subtitle: string | null;
       bio: string | null; avatar_r2_key: string | null; background_image_r2_key: string | null;
-      theme: string;
+      theme: string; corners: string | null; colors: string | null;
     }>();
   if (!p) return null;
 
@@ -46,6 +64,8 @@ export async function loadBuilderState(clerkUserId: string): Promise<BuilderStat
     subtitle: p.subtitle ?? '',
     bio: p.bio ?? '',
     theme: p.theme || 'default',
+    corners: p.corners || 'rounded',
+    colors: parseColors(p.colors),
     avatar_r2_key: p.avatar_r2_key ?? null,
     background_image_r2_key: p.background_image_r2_key ?? null,
     items: rows.map((r) => ({

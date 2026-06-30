@@ -11,8 +11,10 @@ export type BuilderItem = {
   url: string;
   is_featured: boolean;
 };
+export type BuilderColors = { primary: string | null; secondary: string | null; text: string | null; background: string | null };
 export type BuilderState = {
   username: string; display_name: string; subtitle: string; bio: string; theme: string;
+  corners: string; colors: BuilderColors;
   avatar_r2_key: string | null; background_image_r2_key: string | null;
   items: BuilderItem[];
 };
@@ -41,7 +43,7 @@ export function paintPreview(bioEl: HTMLElement, innerEl: HTMLElement, s: Builde
     items: toRenderItems(s.items),
   });
   const bg = mediaUrl(s.background_image_r2_key);
-  const base = themeStyle(s.theme);
+  const base = themeStyle(s.theme, { corners: s.corners, colors: s.colors });
   bioEl.setAttribute(
     'style',
     bg ? `${base};background:linear-gradient(rgba(0,0,0,.4),rgba(0,0,0,.4)),url('${bg}') center/cover` : base,
@@ -79,6 +81,7 @@ export async function saveProfile(s: BuilderState): Promise<{ ok: boolean; error
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       display_name: s.display_name, subtitle: s.subtitle, bio: s.bio, theme: s.theme,
+      corners: s.corners, colors: s.colors,
       avatar_r2_key: s.avatar_r2_key, background_image_r2_key: s.background_image_r2_key,
     }),
   });

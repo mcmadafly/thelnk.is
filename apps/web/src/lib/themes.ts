@@ -128,8 +128,35 @@ const BASE_VARS =
   "--font-mono:'Space Mono',ui-monospace,monospace;" +
   '--link-radius:16px;--radius:16px;--radius-sm:11px';
 
+/** Per-profile style tweaks layered over the chosen preset theme. */
+export type StyleOverrides = {
+  corners?: string | null;
+  colors?: { primary?: string | null; secondary?: string | null; text?: string | null; background?: string | null } | null;
+};
+
+const CORNER_RADIUS: Record<string, string> = { rounded: '16px', square: '4px', pill: '999px' };
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/** Map the user's color choices onto theme CSS vars; only valid, set values apply. */
+function overrideVars(colors?: StyleOverrides['colors']): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!colors) return out;
+  if (colors.primary && HEX.test(colors.primary)) out.accent = colors.primary;
+  if (colors.background && HEX.test(colors.background)) out.bg = colors.background;
+  if (colors.text && HEX.test(colors.text)) { out.text = colors.text; out['text-dim'] = colors.text; }
+  if (colors.secondary && HEX.test(colors.secondary)) { out.surface = colors.secondary; out['surface-2'] = colors.secondary; }
+  return out;
+}
+
+/** The resolved CSS-var map for a theme + overrides (used by the public page and the OG image). */
+export function resolvedThemeVars(id: string | null | undefined, ov?: StyleOverrides): Record<string, string> {
+  return { ...getTheme(id).vars, ...overrideVars(ov?.colors) };
+}
+
 /** Inline `style` value (CSS custom properties) for a theme — apply on the `.bio` root. */
-export function themeStyle(id: string | null | undefined): string {
-  const t = getTheme(id);
-  return BASE_VARS + ';' + Object.entries(t.vars).map(([k, v]) => `--${k}:${v}`).join(';');
+export function themeStyle(id: string | null | undefined, ov?: StyleOverrides): string {
+  const vars = resolvedThemeVars(id, ov);
+  const radius = CORNER_RADIUS[ov?.corners ?? 'rounded'] ?? CORNER_RADIUS.rounded;
+  // --link-radius is appended last so it wins over BASE_VARS.
+  return BASE_VARS + ';' + Object.entries(vars).map(([k, v]) => `--${k}:${v}`).join(';') + `;--link-radius:${radius}`;
 }

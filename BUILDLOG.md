@@ -4,6 +4,30 @@ Built in public, one release at a time. Newest first.
 
 ---
 
+## v0.4 — Sharing, settings & customization (2026-06-29)
+
+Make pages shareable and customizable, plus a real Settings area.
+
+**Shipped**
+- **Share modal** on public pages — a preview card + one-tap share to X, Facebook, WhatsApp,
+  LinkedIn, Telegram, email, native share, and copy-link. Creators can hide it from **Settings**.
+- **Generated per-profile OG images** — `/api/og/[username].png` renders a 1200×630 card (avatar,
+  name, theme colors) via `workers-og` (satori + resvg, wasm); profile pages set per-profile
+  `og:image` / `og:title` / `og:url` so links unfurl with a custom image.
+- **Settings page** (`/admin/settings`) — sharing toggle and account controls.
+- **Appearance customization** — sections are now collapsible; new **Style** control for corner
+  shape (rounded / square / pill) and **custom colors** (primary, secondary, text, background)
+  layered over the chosen preset. Drives the live preview, public page, and OG image.
+- **Sidebar account menu** — Clerk `<UserButton>` (Manage account / Sign out); the page-preview
+  chip moved to the top bar.
+- Migrations `0011_account_settings.sql` (settings + account state) and
+  `0012_appearance_style.sql` (corners + custom colors).
+
+**Internals:** `themes.ts` now layers `StyleOverrides` (corners + hex colors) over preset vars via
+`resolvedThemeVars` / `themeStyle`, shared by SSR, the live preview, and the OG renderer.
+
+---
+
 ## v0.3 — Admin redesign (2026-06-29)
 
 A ground-up redesign of the admin into a Linktree-style dashboard, plus a reworked builder.

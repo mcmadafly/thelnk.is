@@ -45,17 +45,31 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
   const theme = getTheme(themeId).id;
 
+  // Style overrides: corner shape + optional custom colors (hex), layered over the theme.
+  const corners = ['rounded', 'square', 'pill'].includes(String(b.corners)) ? String(b.corners) : 'rounded';
+  const HEX = /^#[0-9a-f]{6}$/i;
+  let colorsJson: string | null = null;
+  if (b.colors && typeof b.colors === 'object') {
+    const src = b.colors as Record<string, unknown>;
+    const out: Record<string, string> = {};
+    for (const k of ['primary', 'secondary', 'text', 'background']) {
+      const v = src[k];
+      if (typeof v === 'string' && HEX.test(v)) out[k] = v.toLowerCase();
+    }
+    colorsJson = Object.keys(out).length ? JSON.stringify(out) : null;
+  }
+
   // Socials now live in the unified profile_links list (saved via /api/builder/links),
   // so this endpoint only owns the profile fields.
   const now = Math.floor(Date.now() / 1000);
   try {
     const res = await env.DB.prepare(
       `UPDATE profiles SET
-         display_name = ?, subtitle = ?, bio = ?, theme = ?,
+         display_name = ?, subtitle = ?, bio = ?, theme = ?, corners = ?, colors = ?,
          avatar_r2_key = ?, background_image_r2_key = ?, updated_at = ?
        WHERE clerk_user_id = ?`,
     )
-      .bind(displayName, subtitle, bio, theme, avatarKey, backgroundKey, now, clerkUserId)
+      .bind(displayName, subtitle, bio, theme, corners, colorsJson, avatarKey, backgroundKey, now, clerkUserId)
       .run();
 
     if (!res.meta?.changes) {

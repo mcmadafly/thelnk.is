@@ -1,18 +1,129 @@
 ---
+import { env } from 'cloudflare:workers';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { getAdminProfile } from '../../lib/admin-auth';
 import { mediaUrl } from '../../lib/media';
 import Card from '../../components/ui/Card.astro';
-import Icon from '../../components/ui/Icon.astro';
+import Button from '../../components/ui/Button.astro';
 
 export const prerender = false;
 const prof = await getAdminProfile(Astro.locals);
 if (!prof) return Astro.redirect('/onboarding');
+
+const row = await env.DB.prepare(`SELECT share_enabled FROM profiles WHERE clerk_user_id = ?`)
+  .bind(prof.clerkUserId)
+  .first<{ share_enabled: number }>();
+const shareEnabled = (row?.share_enabled ?? 1) !== 0;
 ---
+
 <AdminLayout title="Settings" active="settings" username={prof.username} avatarSrc={mediaUrl(prof.avatar_r2_key)}>
-  <Card class="mx-auto flex max-w-2xl flex-col items-center p-12 text-center">
-    <div class="mb-3 rounded-full bg-muted p-3 text-muted-foreground"><Icon name="settings" size={22} /></div>
-    <h2 class="text-lg font-semibold">Settings</h2>
-    <p class="mt-2 text-sm text-muted-foreground">Account &amp; page settings — coming soon.</p>
-  </Card>
+  <div class="mx-auto max-w-2xl space-y-6">
+    <!-- Sharing -->
+    <Card class="p-6">
+      <h2 class="text-sm font-semibold">Sharing</h2>
+      <label class="mt-4 flex items-start justify-between gap-4">
+        <span class="min-w-0">
+          <span class="block text-sm font-medium">Show the Share button on your page</span>
+          <span class="mt-0.5 block text-xs text-muted-foreground">Lets visitors share your page with a preview card and one-tap links to socials.</span>
+        </span>
+        <button
+          id="share-toggle"
+          type="button"
+          role="switch"
+          aria-checked={shareEnabled ? 'true' : 'false'}
+          class="relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+        >
+          <span class="inline-block h-5 w-5 rounded-full bg-white shadow transition-transform"></span>
+        </button>
+      </label>
+      <p id="share-status" class="mt-2 text-xs text-muted-foreground"></p>
+    </Card>
+
+    <!-- Danger zone -->
+    <Card class="border-destructive/40 p-6">
+      <h2 class="text-sm font-semibold text-destructive">Danger zone</h2>
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <div class="text-sm font-medium">Delete your account</div>
+          <div class="mt-0.5 text-xs text-muted-foreground">Your page goes offline and your handle <span class="font-mono">{prof.username}</span> is retired. This can't be undone here.</div>
+        </div>
+        <Button id="delete-open" variant="destructive" size="sm">Delete account</Button>
+      </div>
+    </Card>
+  </div>
+
+  <!-- Delete confirm modal -->
+  <div id="delete-overlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div role="dialog" aria-modal="true" class="w-full max-w-md rounded-xl border bg-card p-6 shadow-2xl">
+      <h3 class="text-base font-semibold text-destructive">Delete your account?</h3>
+      <p class="mt-2 text-sm text-muted-foreground">
+        This takes <span class="font-mono">{prof.username}</span> offline and signs you out. To confirm, type your username below.
+      </p>
+      <input id="delete-confirm" type="text" autocomplete="off" placeholder={prof.username}
+        class="mt-4 flex h-9 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      <p id="delete-status" class="mt-2 text-xs text-destructive"></p>
+      <div class="mt-5 flex justify-end gap-2">
+        <Button id="delete-cancel" variant="outline" size="sm">Cancel</Button>
+        <Button id="delete-confirm-btn" variant="destructive" size="sm">Delete forever</Button>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline define:vars={{ username: prof.username }}>
+    // Share toggle
+    (function () {
+      const t = document.getElementById('share-toggle');
+      const status = document.getElementById('share-status');
+      const knob = t && t.querySelector('span');
+      if (!t) return;
+      const paint = (on) => {
+        t.setAttribute('aria-checked', on ? 'true' : 'false');
+        t.style.backgroundColor = on ? 'var(--primary)' : 'var(--muted)';
+        if (knob) knob.style.transform = on ? 'translateX(1.25rem)' : 'translateX(0.125rem)';
+      };
+      paint(t.getAttribute('aria-checked') === 'true');
+      t.addEventListener('click', async () => {
+        const next = t.getAttribute('aria-checked') !== 'true';
+        paint(next);
+        status.textContent = 'Saving…';
+        try {
+          const res = await fetch('/api/account/settings', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ share_enabled: next }),
+          });
+          status.textContent = res.ok ? 'Saved ✓' : 'Could not save';
+          if (!res.ok) paint(!next);
+        } catch (_) { status.textContent = 'Could not save'; paint(!next); }
+      });
+    })();
+
+    // Delete account
+    (function () {
+      const overlay = document.getElementById('delete-overlay');
+      const open = document.getElementById('delete-open');
+      const cancel = document.getElementById('delete-cancel');
+      const confirmInput = document.getElementById('delete-confirm');
+      const confirmBtn = document.getElementById('delete-confirm-btn');
+      const status = document.getElementById('delete-status');
+      if (!overlay || !open) return;
+      const show = () => { overlay.classList.remove('hidden'); overlay.classList.add('flex'); confirmInput.value = ''; status.textContent = ''; };
+      const hide = () => { overlay.classList.add('hidden'); overlay.classList.remove('flex'); };
+      open.addEventListener('click', show);
+      cancel && cancel.addEventListener('click', hide);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) hide(); });
+      confirmBtn && confirmBtn.addEventListener('click', async () => {
+        if ((confirmInput.value || '').trim().toLowerCase() !== username.toLowerCase()) {
+          status.textContent = 'Type your username exactly to confirm.';
+          return;
+        }
+        status.textContent = 'Deleting…';
+        try {
+          const res = await fetch('/api/account/delete', { method: 'POST' });
+          if (!res.ok) { status.textContent = 'Could not delete. Try again.'; return; }
+          try { if (window.Clerk && window.Clerk.signOut) await window.Clerk.signOut(); } catch (_) {}
+          window.location.href = '/?deleted=1';
+        } catch (_) { status.textContent = 'Could not delete. Try again.'; }
+      });
+    })();
+  </script>
 </AdminLayout>

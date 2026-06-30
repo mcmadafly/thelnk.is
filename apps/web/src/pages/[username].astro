@@ -5,22 +5,24 @@ import '../styles/profile.css';
 import { validateUsername } from '../lib/username';
 import { themeStyle } from '../lib/themes';
 import { renderProfileHTML, type RenderItem } from '../lib/profile-render';
+import ShareModal from '../components/ShareModal.astro';
 
 export const prerender = false;
 
 type ProfileRow = {
   id: number; username: string; display_name: string | null; subtitle: string | null;
   bio: string | null; avatar_r2_key: string | null; background_image_r2_key: string | null;
-  theme: string;
+  theme: string; corners: string | null; colors: string | null; share_enabled: number;
 };
 
 // Defense in depth: reserved/invalid segment can never resolve a profile.
 const check = validateUsername(Astro.params.username ?? '');
 if (!check.ok) return new Response('Not found', { status: 404 });
 
+// Soft-deleted accounts (deleted_at set) read as Not found; the handle stays reserved.
 const profile = await env.DB.prepare(
-  `SELECT id, username, display_name, subtitle, bio, avatar_r2_key, background_image_r2_key, theme
-   FROM profiles WHERE username = ? COLLATE NOCASE`,
+  `SELECT id, username, display_name, subtitle, bio, avatar_r2_key, background_image_r2_key, theme, corners, colors, share_enabled
+   FROM profiles WHERE username = ? COLLATE NOCASE AND deleted_at IS NULL`,
 ).bind(check.username).first<ProfileRow>();
 if (!profile) return new Response('Not found', { status: 404 });
 
@@ -42,9 +44,13 @@ const mediaUrl = (key: string | null): string | null =>
 
 const displayName = profile.display_name?.trim() || profile.username;
 const bgUrl = mediaUrl(profile.background_image_r2_key);
+let parsedColors: Record<string, string> | null = null;
+try { parsedColors = profile.colors ? JSON.parse(profile.colors) : null; } catch { parsedColors = null; }
+const styleOverrides = { corners: profile.corners, colors: parsedColors };
+const base = themeStyle(profile.theme, styleOverrides);
 const bioStyle = bgUrl
-  ? `${themeStyle(profile.theme)};background:linear-gradient(rgba(0,0,0,.4),rgba(0,0,0,.4)),url('${bgUrl}') center/cover`
-  : themeStyle(profile.theme);
+  ? `${base};background:linear-gradient(rgba(0,0,0,.4),rgba(0,0,0,.4)),url('${bgUrl}') center/cover`
+  : base;
 
 const innerHtml = renderProfileHTML({
   username: profile.username,
@@ -57,11 +63,19 @@ const innerHtml = renderProfileHTML({
 
 const pageTitle = `${displayName} · thelnk.is`;
 const pageDesc = profile.bio?.trim() || `${displayName} on thelnk.is`;
+
+const origin = env.PUBLIC_APP_ORIGIN.replace(/\/+$/, '');
+const profileUrl = `${origin}/${profile.username}`;
+const ogImage = `${origin}/api/og/${profile.username}.png`;
+const shareEnabled = profile.share_enabled !== 0;
 ---
 
-<BaseLayout title={pageTitle} description={pageDesc} bareFooter={true} bareHeader={true}>
+<BaseLayout title={pageTitle} description={pageDesc} ogImage={ogImage} ogUrl={profileUrl} bareFooter={true} bareHeader={true}>
   <section class={`bio${bgUrl ? ' has-bg' : ''}`} style={bioStyle}>
     <div class="bio-cover" aria-hidden="true"></div>
     <div class="bio-inner" set:html={innerHtml}></div>
   </section>
+  {shareEnabled && (
+    <ShareModal username={profile.username} displayName={displayName} avatarSrc={mediaUrl(profile.avatar_r2_key)} profileUrl={profileUrl} />
+  )}
 </BaseLayout>

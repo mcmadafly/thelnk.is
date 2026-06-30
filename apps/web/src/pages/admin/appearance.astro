@@ -1,7 +1,6 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import BuilderPreview from '../../components/admin/BuilderPreview.astro';
-import Card from '../../components/ui/Card.astro';
 import Button from '../../components/ui/Button.astro';
 import Icon from '../../components/ui/Icon.astro';
 import { getAdminProfile } from '../../lib/admin-auth';
@@ -22,9 +21,31 @@ const avatarSrc = mediaUrl(state.avatar_r2_key);
 const bgSrc = mediaUrl(state.background_image_r2_key);
 const themes = THEMES.map((t) => ({ id: t.id, name: t.name, isPro: t.isPro, swatch: t.vars['bio-cover'] || t.vars.accent }));
 
+// Each theme's default colors, so the pickers seed sensibly when a value isn't overridden.
+const themeDefaults: Record<string, Record<string, string>> = Object.fromEntries(
+  THEMES.map((t) => [t.id, { primary: t.vars.accent, secondary: t.vars.surface, text: t.vars.text, background: t.vars.bg }]),
+);
+const td = themeDefaults[state.theme] || themeDefaults['default']!;
+const colorVal = (k: 'primary' | 'secondary' | 'text' | 'background') => (state.colors[k] || td[k]) as string;
+
+const COLOR_FIELDS = [
+  { key: 'primary', label: 'Primary', hint: 'Accents, featured card' },
+  { key: 'secondary', label: 'Secondary', hint: 'Link buttons' },
+  { key: 'text', label: 'Text', hint: 'Name & body' },
+  { key: 'background', label: 'Background', hint: 'Page' },
+] as const;
+const CORNERS = [
+  { key: 'rounded', label: 'Rounded' },
+  { key: 'square', label: 'Square' },
+  { key: 'pill', label: 'Pill' },
+];
+
 const inputCls =
   'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 const labelCls = 'mb-1.5 block text-sm font-medium';
+const summaryCls =
+  'flex cursor-pointer list-none items-center justify-between p-5 text-sm font-semibold [&::-webkit-details-marker]:hidden';
+const chevron = 'text-muted-foreground transition-transform group-open:rotate-180';
 ---
 
 <AdminLayout title="Appearance" active="appearance" username={state.username} avatarSrc={avatarSrc}>
@@ -34,90 +55,144 @@ const labelCls = 'mb-1.5 block text-sm font-medium';
   </Fragment>
 
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-    <div class="max-w-xl space-y-6">
-      <Card class="space-y-4 p-6">
-        <h2 class="text-sm font-semibold">Profile</h2>
-        <div>
-          <label class={labelCls} for="f-name">Name</label>
-          <input id="f-name" class={inputCls} value={state.display_name} maxlength="80" placeholder="Your name" />
+    <div class="max-w-xl space-y-4">
+      <!-- Profile -->
+      <details class="group rounded-xl border bg-card" open>
+        <summary class={summaryCls}><span>Profile</span><Icon name="chevronDown" size={16} class={chevron} /></summary>
+        <div class="space-y-4 border-t p-5">
+          <div>
+            <label class={labelCls} for="f-name">Name</label>
+            <input id="f-name" class={inputCls} value={state.display_name} maxlength="80" placeholder="Your name" />
+          </div>
+          <div>
+            <label class={labelCls} for="f-subtitle">Subtitle</label>
+            <input id="f-subtitle" class={inputCls} value={state.subtitle} maxlength="80" placeholder="Builder · Designer · etc." />
+          </div>
+          <div>
+            <label class={labelCls} for="f-bio">Description</label>
+            <textarea id="f-bio" class={`${inputCls} h-auto min-h-[88px] py-2`} maxlength="280" placeholder="A line or two about you.">{state.bio}</textarea>
+          </div>
         </div>
-        <div>
-          <label class={labelCls} for="f-subtitle">Subtitle</label>
-          <input id="f-subtitle" class={inputCls} value={state.subtitle} maxlength="80" placeholder="Builder · Designer · etc." />
-        </div>
-        <div>
-          <label class={labelCls} for="f-bio">Description</label>
-          <textarea id="f-bio" class={`${inputCls} h-auto min-h-[88px] py-2`} maxlength="280" placeholder="A line or two about you.">{state.bio}</textarea>
-        </div>
-      </Card>
+      </details>
 
-      <Card class="space-y-5 p-6">
-        <h2 class="text-sm font-semibold">Images</h2>
-        <div class="flex items-center gap-4">
-          <div id="avatar-thumb" class="h-16 w-16 shrink-0 rounded-full border bg-muted bg-cover bg-center" style={avatarSrc ? `background-image:url('${avatarSrc}')` : ''}></div>
-          <div class="space-y-1">
-            <div class="text-sm font-medium">Avatar</div>
-            <div class="flex gap-2">
-              <Button id="avatar-upload" variant="outline" size="sm"><Icon name="image" size={14} /> Upload</Button>
-              <Button id="avatar-remove" variant="ghost" size="sm">Remove</Button>
+      <!-- Images -->
+      <details class="group rounded-xl border bg-card">
+        <summary class={summaryCls}><span>Images</span><Icon name="chevronDown" size={16} class={chevron} /></summary>
+        <div class="space-y-5 border-t p-5">
+          <div class="flex items-center gap-4">
+            <div id="avatar-thumb" class="h-16 w-16 shrink-0 rounded-full border bg-muted bg-cover bg-center" style={avatarSrc ? `background-image:url('${avatarSrc}')` : ''}></div>
+            <div class="space-y-1">
+              <div class="text-sm font-medium">Avatar</div>
+              <div class="flex gap-2">
+                <Button id="avatar-upload" variant="outline" size="sm"><Icon name="image" size={14} /> Upload</Button>
+                <Button id="avatar-remove" variant="ghost" size="sm">Remove</Button>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <div id="bg-thumb" class="h-16 w-24 shrink-0 rounded-md border bg-muted bg-cover bg-center" style={bgSrc ? `background-image:url('${bgSrc}')` : ''}></div>
+            <div class="space-y-1">
+              <div class="text-sm font-medium">Background</div>
+              <div class="flex gap-2">
+                <Button id="bg-upload" variant="outline" size="sm"><Icon name="image" size={14} /> Upload</Button>
+                <Button id="bg-remove" variant="ghost" size="sm">Remove</Button>
+              </div>
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-4">
-          <div id="bg-thumb" class="h-16 w-24 shrink-0 rounded-md border bg-muted bg-cover bg-center" style={bgSrc ? `background-image:url('${bgSrc}')` : ''}></div>
-          <div class="space-y-1">
-            <div class="text-sm font-medium">Background</div>
-            <div class="flex gap-2">
-              <Button id="bg-upload" variant="outline" size="sm"><Icon name="image" size={14} /> Upload</Button>
-              <Button id="bg-remove" variant="ghost" size="sm">Remove</Button>
+      </details>
+
+      <!-- Theme -->
+      <details class="group rounded-xl border bg-card">
+        <summary class={summaryCls}><span>Theme</span><Icon name="chevronDown" size={16} class={chevron} /></summary>
+        <div class="border-t p-5">
+          {!isPro && <p class="mb-3 text-xs text-muted-foreground">Pro themes need an upgrade.</p>}
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {themes.map((t) => (
+              <button type="button" data-theme={t.id} disabled={t.isPro && !isPro}
+                class="theme-btn group/btn relative flex flex-col gap-2 rounded-lg border p-2 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-50">
+                <span class="h-12 w-full rounded-md" style={`background:${t.swatch}`}></span>
+                <span class="flex items-center justify-between text-xs font-medium">
+                  {t.name}
+                  {t.isPro && <span class="rounded bg-muted px-1 py-0.5 text-[9px] uppercase text-muted-foreground">Pro</span>}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div class="mt-5 border-t pt-4">
+            <div class="mb-3 text-sm font-medium">Custom colors</div>
+            <div class="space-y-3">
+              {COLOR_FIELDS.map((c) => (
+                <div class="flex items-center justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="text-sm">{c.label}</div>
+                    <div class="text-xs text-muted-foreground">{c.hint}</div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input type="color" class="color-input h-8 w-12 cursor-pointer rounded-md border bg-background p-1" data-key={c.key} value={colorVal(c.key)} />
+                    <button type="button" class="color-reset text-xs text-muted-foreground hover:text-foreground" data-key={c.key}>Reset</button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      </Card>
+      </details>
 
-      <Card class="p-6">
-        <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold">Theme</h2>
-          {!isPro && <span class="text-xs text-muted-foreground">Pro themes need an upgrade</span>}
+      <!-- Style -->
+      <details class="group rounded-xl border bg-card">
+        <summary class={summaryCls}><span>Style</span><Icon name="chevronDown" size={16} class={chevron} /></summary>
+        <div class="border-t p-5">
+          <div class="mb-2 text-sm font-medium">Corners</div>
+          <p class="mb-3 text-xs text-muted-foreground">Shape of your link buttons and cards.</p>
+          <div class="grid grid-cols-3 gap-2">
+            {CORNERS.map((c) => (
+              <button type="button" data-corner={c.key}
+                class="corner-btn flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:border-primary">
+                {c.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {themes.map((t) => (
-            <button
-              type="button"
-              data-theme={t.id}
-              disabled={t.isPro && !isPro}
-              class="theme-btn group relative flex flex-col gap-2 rounded-lg border p-2 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <span class="h-12 w-full rounded-md" style={`background:${t.swatch}`}></span>
-              <span class="flex items-center justify-between text-xs font-medium">
-                {t.name}
-                {t.isPro && <span class="rounded bg-muted px-1 py-0.5 text-[9px] uppercase text-muted-foreground">Pro</span>}
-              </span>
-            </button>
-          ))}
-        </div>
-      </Card>
+      </details>
     </div>
 
     <BuilderPreview />
   </div>
 
   <script id="builder-state" type="application/json" set:html={JSON.stringify(state)}></script>
+  <script id="theme-defaults" type="application/json" set:html={JSON.stringify(themeDefaults)}></script>
 
   <script>
     import { paintPreview, uploadImage, saveProfile, type BuilderState } from '../../lib/builder-preview';
     import { mediaUrl } from '../../lib/media';
 
     const state = JSON.parse(document.getElementById('builder-state')!.textContent!) as BuilderState;
+    const themeDefaults = JSON.parse(document.getElementById('theme-defaults')!.textContent!) as Record<string, Record<string, string>>;
     const bioEl = document.getElementById('preview-bio') as HTMLElement;
     const innerEl = document.getElementById('preview-inner') as HTMLElement;
     const paint = () => paintPreview(bioEl, innerEl, state);
-
     const on = (sel: string, evt: string, fn: (e: Event) => void) => document.querySelector(sel)?.addEventListener(evt, fn);
+
     on('#f-name', 'input', (e) => { state.display_name = (e.target as HTMLInputElement).value; paint(); });
     on('#f-subtitle', 'input', (e) => { state.subtitle = (e.target as HTMLInputElement).value; paint(); });
     on('#f-bio', 'input', (e) => { state.bio = (e.target as HTMLTextAreaElement).value; paint(); });
 
+    // ── Colors ──
+    const colorKey = (k: string) => k as 'primary' | 'secondary' | 'text' | 'background';
+    const colorInputs = Array.from(document.querySelectorAll<HTMLInputElement>('.color-input'));
+    const themeCols = () => themeDefaults[state.theme] || themeDefaults['default'];
+    const effColor = (k: string) => state.colors[colorKey(k)] || themeCols()[k];
+    const syncColors = () => colorInputs.forEach((inp) => { inp.value = effColor(inp.dataset.key!); });
+    colorInputs.forEach((inp) =>
+      inp.addEventListener('input', () => { state.colors[colorKey(inp.dataset.key!)] = inp.value; paint(); }),
+    );
+    document.querySelectorAll<HTMLButtonElement>('.color-reset').forEach((btn) =>
+      btn.addEventListener('click', () => { state.colors[colorKey(btn.dataset.key!)] = null; syncColors(); paint(); }),
+    );
+
+    // ── Theme presets ──
     const themeBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.theme-btn'));
     const syncTheme = () => themeBtns.forEach((b) => {
       const active = b.dataset.theme === state.theme;
@@ -125,9 +200,18 @@ const labelCls = 'mb-1.5 block text-sm font-medium';
       b.classList.toggle('ring-2', active);
       b.classList.toggle('ring-primary', active);
     });
-    themeBtns.forEach((b) => b.addEventListener('click', () => { state.theme = b.dataset.theme!; syncTheme(); paint(); }));
-    syncTheme();
+    themeBtns.forEach((b) => b.addEventListener('click', () => { state.theme = b.dataset.theme!; syncTheme(); syncColors(); paint(); }));
 
+    // ── Corners ──
+    const cornerBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.corner-btn'));
+    const syncCorners = () => cornerBtns.forEach((b) => {
+      const active = b.dataset.corner === state.corners;
+      b.classList.toggle('border-primary', active);
+      b.classList.toggle('bg-accent', active);
+    });
+    cornerBtns.forEach((b) => b.addEventListener('click', () => { state.corners = b.dataset.corner!; syncCorners(); paint(); }));
+
+    // ── Images ──
     on('#avatar-upload', 'click', async () => {
       const key = await uploadImage('avatar');
       if (!key) return;
@@ -160,6 +244,9 @@ const labelCls = 'mb-1.5 block text-sm font-medium';
       status.textContent = r.ok ? 'Saved ✓' : (r.error || 'Could not save');
     });
 
+    syncTheme();
+    syncColors();
+    syncCorners();
     paint();
   </script>
 </AdminLayout>

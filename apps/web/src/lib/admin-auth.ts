@@ -20,7 +20,9 @@ export async function getAdminProfile(locals: App.Locals): Promise<AdminProfile 
   if (!uid) uid = await devClerkUserId();
   if (!uid) return null;
 
-  const p = await env.DB.prepare(`SELECT username, avatar_r2_key FROM profiles WHERE clerk_user_id = ?`)
+  const p = await env.DB.prepare(
+    `SELECT username, avatar_r2_key FROM profiles WHERE clerk_user_id = ? AND deleted_at IS NULL`,
+  )
     .bind(uid)
     .first<{ username: string; avatar_r2_key: string | null }>();
   if (!p) return null;

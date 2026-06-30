@@ -27,6 +27,7 @@
     "simple-icons": "^16.19.0",
     "stripe": "^17.4.0",
     "tlds": "^1.261.0",
+    "workers-og": "^0.0.27",
     "wrangler": "^4.90.1"
   },
   "overrides": {
